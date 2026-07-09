@@ -35,3 +35,8 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### 환경변수 (절대 커밋 금지 — 실제 비밀번호/시크릿 포함) ###
+.env
+.env.local
+!.env.example

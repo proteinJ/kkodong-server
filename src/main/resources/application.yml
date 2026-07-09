@@ -10,7 +10,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate # 스키마는 Flyway가 관리, Hibernate는 엔티티-테이블 일치 여부만 검증
+      ddl-auto: ${JPA_DDL_AUTO:validate} # 스키마는 Flyway가 관리, 평소엔 validate로 엔티티-테이블 일치 여부만 검증
     show-sql: true
     properties:
       hibernate:
