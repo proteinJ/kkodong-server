@@ -22,8 +22,8 @@ public class OpenApiConfig {
     public OpenAPI openAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("spring-boot-boilerplate API")
-                        .description("범용 인증/에러처리 보일러플레이트")
+                        .title("PawWalk API")
+                        .description("PawWalk 서버 API 문서")
                         .version("v1"))
                 .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME_NAME))
                 .components(new Components()

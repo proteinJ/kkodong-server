@@ -1,10 +1,12 @@
 package com.pawwalk.server.domain.member.dto;
 
+import io.swagger.v3.oas.annotations.media.Schema;
+
 import java.util.UUID;
 
 public record MemberResponse(
-        UUID id,
-        String email,
-        String role
+        @Schema(description = "회원 ID") UUID id,
+        @Schema(description = "이메일", example = "user@example.com") String email,
+        @Schema(description = "권한", example = "USER") String role
 ) {
 }

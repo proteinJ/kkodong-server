@@ -5,6 +5,8 @@ import com.pawwalk.server.domain.dog.dto.DogResponse;
 import com.pawwalk.server.domain.dog.service.DogService;
 import com.pawwalk.server.global.common.ApiResponse;
 import com.pawwalk.server.global.security.PrincipalDetails;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
+@Tag(name = "Dog", description = "반려견 등록/삭제 API")
 @RestController
 @RequestMapping("/api/v1/dogs")
 @RequiredArgsConstructor
@@ -21,6 +24,7 @@ public class DogController {
 
     private final DogService dogService;
 
+    @Operation(summary = "반려견 등록", description = "로그인한 회원의 반려견 정보를 등록합니다.")
     @PostMapping
     public ResponseEntity<ApiResponse<DogResponse.registration>> dogRegistration(
             @AuthenticationPrincipal PrincipalDetails principal,
@@ -29,6 +33,7 @@ public class DogController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("반려견 등록 완료", response));
     }
 
+    @Operation(summary = "반려견 삭제", description = "로그인한 회원 소유의 반려견을 삭제합니다.")
     @DeleteMapping("/{dogId}")
     public ResponseEntity<ApiResponse<String>> dogDelete(
             @AuthenticationPrincipal PrincipalDetails principal,
