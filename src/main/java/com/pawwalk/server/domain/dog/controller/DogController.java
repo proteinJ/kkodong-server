@@ -41,4 +41,14 @@ public class DogController {
         dogService.animalDelete(principal.getMemberId(), dogId);
         return ResponseEntity.ok(ApiResponse.success("반려견 삭제 완료"));
     }
+
+    @Operation(summary = "반려견 정보 수정", description = "로그인한 회원 소유의 반려견 정보를 수정합니다.")
+    @PatchMapping("/{dogId}")
+    public ResponseEntity<ApiResponse<DogResponse.patch>> dogPatch(
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @PathVariable UUID dogId,
+            @Valid @RequestBody DogRequest.patch request) {
+        DogResponse.patch response = dogService.animalPatch(principal.getMemberId(), dogId, request);
+        return ResponseEntity.ok(ApiResponse.success("반려견 수정 완료", response));
+    }
 }

@@ -66,4 +66,38 @@ public class DogService {
         dogRepository.delete(dog);
     }
 
+    @Transactional
+    public DogResponse.patch animalPatch(UUID memberId, UUID dogId, DogRequest.patch request) {
+        Dog dog = dogRepository.findByDogId(dogId);
+        if (!dog.getOwnerId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.METHOD_NOT_ALLOWED);
+        }
+
+        dog.patch(
+            request.name(),
+            request.breed(),
+            request.birthDate(),
+            request.gender() != null ? Gender.valueOf(request.gender().toUpperCase()) : null,
+            request.size() != null ? DogSize.valueOf(request.size().toUpperCase()) : null,
+            request.energyLevel() != null ? EnergyLevel.valueOf(request.energyLevel().toUpperCase()) : null,
+            request.neutered(),
+            request.animalRegistrationNumber()
+        );
+
+        return toPatchResponse(dog);
+    }
+
+    private DogResponse.patch toPatchResponse(Dog dog) {
+        return new DogResponse.patch(
+                dog.getName(),
+                dog.getBreed(),
+                dog.getBirthDate(),
+                dog.getGender() != null ? dog.getGender().name().toLowerCase() : null,
+                dog.getSize() != null ? dog.getSize().name().toLowerCase() : null,
+                dog.getEnergyLevel() != null ? dog.getEnergyLevel().name().toLowerCase() : null,
+                dog.getNeutered(),
+                dog.getProfileImageUrl(),
+                dog.getAnimalRegistrationNumber()
+        );
+    }
 }

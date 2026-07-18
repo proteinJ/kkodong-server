@@ -71,4 +71,21 @@ public class Dog {
     public void updateProfileImage(String profileImageUrl) {
         this.profileImageUrl = profileImageUrl;
     }
+
+    /**
+     * PATCH용 부분 수정 — request에 담기지 않은(null) 필드는 기존 값을 그대로 둔다.
+     * update()는 전체 덮어쓰기용이라 PATCH 의미론에는 맞지 않아 별도로 둔다.
+     */
+    public void patch(String name, String breed, LocalDate birthDate, Gender gender,
+                       DogSize size, EnergyLevel energyLevel, Boolean neutered,
+                       String animalRegistrationNumber) {
+        if (name != null) this.name = name;
+        if (breed != null) this.breed = breed;
+        if (birthDate != null) this.birthDate = birthDate;
+        if (gender != null) this.gender = gender;
+        if (size != null) this.size = size;
+        if (energyLevel != null) this.energyLevel = energyLevel;
+        if (neutered != null) this.neutered = neutered;
+        if (animalRegistrationNumber != null) this.animalRegistrationNumber = animalRegistrationNumber;
+    }
 }
