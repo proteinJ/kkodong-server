@@ -26,10 +26,10 @@ public class DogController {
 
     @Operation(summary = "반려견 등록", description = "로그인한 회원의 반려견 정보를 등록합니다.")
     @PostMapping
-    public ResponseEntity<ApiResponse<DogResponse.registration>> dogRegistration(
+    public ResponseEntity<ApiResponse<DogResponse.detailInfo>> dogRegistration(
             @AuthenticationPrincipal PrincipalDetails principal,
             @Valid @RequestBody DogRequest.registration request) {
-        DogResponse.registration response = dogService.animalRegistration(principal.getMemberId(), request);
+        DogResponse.detailInfo response = dogService.animalRegistration(principal.getMemberId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("반려견 등록 완료", response));
     }
 
@@ -50,5 +50,14 @@ public class DogController {
             @Valid @RequestBody DogRequest.patch request) {
         DogResponse.patch response = dogService.animalPatch(principal.getMemberId(), dogId, request);
         return ResponseEntity.ok(ApiResponse.success("반려견 수정 완료", response));
+    }
+
+    @Operation(summary = "내 반려견 상세 조회", description = "(단일) 로그인한 회원 소유의 반려견 정보를 상세 조회 합니다.")
+    @GetMapping("/{dogId}")
+    public ResponseEntity<ApiResponse<DogResponse.detailInfo>> dogDetailGet(
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @PathVariable UUID dogId) {
+        DogResponse.detailInfo response = dogService.animalGet(principal.getMemberId(), dogId);
+        return ResponseEntity.ok(ApiResponse.success("반려견 상세 조회 완료", response));
     }
 }

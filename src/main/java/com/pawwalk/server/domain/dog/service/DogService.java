@@ -10,6 +10,7 @@ import com.pawwalk.server.domain.dog.repository.DogRepository;
 import com.pawwalk.server.global.error.BusinessException;
 import com.pawwalk.server.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,7 +24,7 @@ public class DogService {
     private final DogRepository dogRepository;
 
     @Transactional
-    public DogResponse.registration animalRegistration(UUID ownerId, DogRequest.registration request) {
+    public DogResponse.detailInfo animalRegistration(UUID ownerId, DogRequest.registration request) {
         Dog dog = Dog.builder()
                 .ownerId(ownerId)
                 .name(request.name())
@@ -40,8 +41,8 @@ public class DogService {
         return toResponse(saved);
     }
 
-    private DogResponse.registration toResponse(Dog dog) {
-        return new DogResponse.registration(
+    private DogResponse.detailInfo toResponse(Dog dog) {
+        return new DogResponse.detailInfo(
                 dog.getId(),
                 dog.getOwnerId(),
                 dog.getName(),
@@ -58,20 +59,14 @@ public class DogService {
 
     @Transactional
     public void animalDelete(UUID memberId, UUID dogId) {
-        Dog dog = dogRepository.findByDogId(dogId);
-        if (!dog.getOwnerId().equals(memberId)) {
-            throw new BusinessException(ErrorCode.METHOD_NOT_ALLOWED);
-        }
+        Dog dog = getDog(memberId, dogId);
 
         dogRepository.delete(dog);
     }
 
     @Transactional
     public DogResponse.patch animalPatch(UUID memberId, UUID dogId, DogRequest.patch request) {
-        Dog dog = dogRepository.findByDogId(dogId);
-        if (!dog.getOwnerId().equals(memberId)) {
-            throw new BusinessException(ErrorCode.METHOD_NOT_ALLOWED);
-        }
+        Dog dog = getDog(memberId, dogId);
 
         dog.patch(
             request.name(),
@@ -87,6 +82,14 @@ public class DogService {
         return toPatchResponse(dog);
     }
 
+    private @NonNull Dog getDog(UUID memberId, UUID dogId) {
+        Dog dog = dogRepository.findByDogId(dogId);
+        if (!dog.getOwnerId().equals(memberId)) {
+            throw new BusinessException(ErrorCode.METHOD_NOT_ALLOWED);
+        }
+        return dog;
+    }
+
     private DogResponse.patch toPatchResponse(Dog dog) {
         return new DogResponse.patch(
                 dog.getName(),
@@ -99,5 +102,12 @@ public class DogService {
                 dog.getProfileImageUrl(),
                 dog.getAnimalRegistrationNumber()
         );
+    }
+
+    @Transactional
+    public DogResponse.detailInfo animalGet(UUID memberId, UUID dogId) {
+        Dog dog = getDog(memberId, dogId);
+
+        return toResponse(dog);
     }
 }

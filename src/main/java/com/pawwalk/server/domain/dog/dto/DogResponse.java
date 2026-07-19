@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public class DogResponse {
 
-    public record registration(
+    public record detailInfo(
         @Schema(description = "반려견 ID") UUID id,
         @Schema(description = "보호자(회원) ID") UUID ownerId,
         @Schema(description = "이름", example = "초코") String name,
@@ -32,4 +32,5 @@ public class DogResponse {
         @Schema(description = "프로필 이미지 URL") String profileImageUrl,
         @Schema(description = "동물등록번호", example = "410000012345678") String animalRegistrationNumber
     ) {}
+
 }
