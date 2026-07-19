@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -122,5 +123,10 @@ public class DogService {
         dog.updateProfileImage(imageUrl);
 
         return toResponse(dog);
+    }
+
+    public List<DogResponse.detailInfo> animalListGet(UUID memberId) {
+        List<Dog> dogList = dogRepository.findByOwnerId(memberId);
+        return dogList.stream().map(this::toResponse).toList();
     }
 }

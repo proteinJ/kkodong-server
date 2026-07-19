@@ -16,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.UUID;
 
 @Tag(name = "Dog", description = "반려견 등록/삭제 API")
@@ -61,6 +62,14 @@ public class DogController {
             @PathVariable UUID dogId) {
         DogResponse.detailInfo response = dogService.animalGet(principal.getMemberId(), dogId);
         return ResponseEntity.ok(ApiResponse.success("반려견 상세 조회 완료", response));
+    }
+
+    @Operation(summary = "내 반려견 목록 조회", description = "(다중) 로그인한 회원 소유의 반려견 목록을 조회합니다.")
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<DogResponse.detailInfo>>> dogListGet(
+            @AuthenticationPrincipal PrincipalDetails principal) {
+        List<DogResponse.detailInfo> response = dogService.animalListGet(principal.getMemberId());
+        return ResponseEntity.ok(ApiResponse.success("반려견 목록 조회 완료", response));
     }
 
     @Operation(summary = "내 반려견 이미지 변경", description = "내 반려견 이미지를 추가/수정 합니다.")
