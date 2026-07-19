@@ -10,9 +10,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -59,5 +61,15 @@ public class DogController {
             @PathVariable UUID dogId) {
         DogResponse.detailInfo response = dogService.animalGet(principal.getMemberId(), dogId);
         return ResponseEntity.ok(ApiResponse.success("반려견 상세 조회 완료", response));
+    }
+
+    @Operation(summary = "내 반려견 이미지 변경", description = "내 반려견 이미지를 추가/수정 합니다.")
+    @PostMapping(value = "/{dogId}/photo", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<DogResponse.detailInfo>> dogPhotoUpdate(
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @PathVariable UUID dogId,
+            @RequestParam("file") MultipartFile file) {
+        DogResponse.detailInfo response = dogService.animalPhoto(principal.getMemberId(), dogId, file);
+        return ResponseEntity.ok(ApiResponse.success("반려견 이미지 변경 완료", response));
     }
 }

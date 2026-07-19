@@ -44,6 +44,9 @@ dependencies {
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 
+	// PawWalk 전용: Cloudflare R2(S3 호환) 반려견 이미지 업로드
+	implementation 'software.amazon.awssdk:s3:2.29.52'
+
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
 	testCompileOnly 'org.projectlombok:lombok'

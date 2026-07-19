@@ -9,10 +9,12 @@ import com.pawwalk.server.domain.dog.dto.DogResponse;
 import com.pawwalk.server.domain.dog.repository.DogRepository;
 import com.pawwalk.server.global.error.BusinessException;
 import com.pawwalk.server.global.error.ErrorCode;
+import com.pawwalk.server.global.storage.ImageStorageService;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class DogService {
 
     private final DogRepository dogRepository;
+    private final ImageStorageService imageStorageService;
 
     @Transactional
     public DogResponse.detailInfo animalRegistration(UUID ownerId, DogRequest.registration request) {
@@ -107,6 +110,16 @@ public class DogService {
     @Transactional
     public DogResponse.detailInfo animalGet(UUID memberId, UUID dogId) {
         Dog dog = getDog(memberId, dogId);
+
+        return toResponse(dog);
+    }
+
+    @Transactional
+    public DogResponse.detailInfo animalPhoto(UUID memberId, UUID dogId, MultipartFile file) {
+        Dog dog = getDog(memberId, dogId);
+
+        String imageUrl = imageStorageService.upload(file, "dogs/" + dogId);
+        dog.updateProfileImage(imageUrl);
 
         return toResponse(dog);
     }
