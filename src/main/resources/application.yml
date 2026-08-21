@@ -1,10 +1,10 @@
 spring:
   application:
-    name: pawwalk-server
+    name: kkodong-server
 
   datasource:
     # Supabase Postgres 연결 문자열로 교체 필요 (Supabase 대시보드 > Settings > Database)
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/pawwalk}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/kkodong}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
 
@@ -35,7 +35,7 @@ r2:
   endpoint: ${R2_ENDPOINT:}
   access-key: ${R2_ACCESS_KEY:}
   secret-key: ${R2_SECRET_KEY:}
-  bucket: ${R2_BUCKET:pawwalk}
+  bucket: ${R2_BUCKET:kkodong}
   public-url: ${R2_PUBLIC_URL:}
 
 jwt:
