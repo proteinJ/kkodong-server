@@ -1,7 +1,7 @@
 package com.pawwalk.server.global.security;
 
-import com.pawwalk.server.domain.member.domain.Member;
-import com.pawwalk.server.domain.member.repository.MemberRepository;
+import com.pawwalk.server.domain.user.domain.User;
+import com.pawwalk.server.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
@@ -19,22 +19,22 @@ import java.util.Collections;
 @Slf4j
 public class CustomUserDetailService implements UserDetailsService {
 
-    private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        return memberRepository.findByEmail(email)
+        return userRepository.findByEmail(email)
                 .map(this::createUserDetails)
                 .orElseThrow(() -> new UsernameNotFoundException(email + " -> DB에서 찾을 수 없습니다."));
     }
 
-    private UserDetails createUserDetails(Member member) {
-        GrantedAuthority grantedAuthority = new SimpleGrantedAuthority("ROLE_" + member.getRole().name());
+    private UserDetails createUserDetails(User user) {
+        GrantedAuthority grantedAuthority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
         return new PrincipalDetails(
-                member.getId(),
-                member.getEmail(),
-                member.getPassword(),
+                user.getId(),
+                user.getEmail(),
+                user.getPassword(),
                 Collections.singleton(grantedAuthority)
         );
     }

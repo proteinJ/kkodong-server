@@ -1,4 +1,4 @@
-package com.pawwalk.server.domain.member.domain;
+package com.pawwalk.server.domain.user.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -17,7 +17,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @Builder
 @Table(name = "users")
-public class Member {
+public class User {
 
     @Id
     @GeneratedValue

@@ -1,4 +1,4 @@
-package com.pawwalk.server.domain.member.domain;
+package com.pawwalk.server.domain.user.domain;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;

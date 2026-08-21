@@ -1,12 +1,12 @@
-package com.pawwalk.server.domain.member.service;
+package com.pawwalk.server.domain.user.service;
 
-import com.pawwalk.server.domain.member.domain.Member;
-import com.pawwalk.server.domain.member.domain.Role;
-import com.pawwalk.server.domain.member.domain.TokenDto;
-import com.pawwalk.server.domain.member.dto.LoginRequest;
-import com.pawwalk.server.domain.member.dto.SignupRequest;
-import com.pawwalk.server.domain.member.repository.MemberRepository;
-import com.pawwalk.server.domain.member.repository.RefreshTokenRepository;
+import com.pawwalk.server.domain.user.domain.User;
+import com.pawwalk.server.domain.user.domain.Role;
+import com.pawwalk.server.domain.user.domain.TokenDto;
+import com.pawwalk.server.domain.user.dto.LoginRequest;
+import com.pawwalk.server.domain.user.dto.SignupRequest;
+import com.pawwalk.server.domain.user.repository.UserRepository;
+import com.pawwalk.server.domain.user.repository.RefreshTokenRepository;
 import com.pawwalk.server.global.error.BusinessException;
 import com.pawwalk.server.global.error.ErrorCode;
 import com.pawwalk.server.global.security.JwtProvider;
@@ -33,7 +33,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuthService {
 
-    private final MemberRepository memberRepository;
+    private final UserRepository userRepository;
     private final RefreshTokenRepository refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
@@ -42,15 +42,15 @@ public class AuthService {
 
     @Transactional
     public void signup(SignupRequest request) {
-        if (memberRepository.existsByEmail(request.email())) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new BusinessException(ErrorCode.EMAIL_DUPLICATION);
         }
-        Member member = Member.builder()
+        User user = User.builder()
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .role(Role.USER)
                 .build();
-        memberRepository.save(member);
+        userRepository.save(user);
     }
 
     public TokenDto login(LoginRequest request) {
@@ -85,20 +85,20 @@ public class AuthService {
         RefreshToken saved = refreshTokenRepository.findById(refreshToken)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REFRESH_TOKEN_NOT_FOUND));
 
-        Member member = memberRepository.findByEmail(saved.getValue())
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        User user = userRepository.findByEmail(saved.getValue())
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         refreshTokenRepository.deleteById(refreshToken); // 회전: 재사용 방지
 
-        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + member.getRole().name());
+        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
         Authentication authentication = new UsernamePasswordAuthenticationToken(
-                new PrincipalDetails(member.getId(), member.getEmail(), member.getPassword(), List.of(authority)),
+                new PrincipalDetails(user.getId(), user.getEmail(), user.getPassword(), List.of(authority)),
                 "",
                 List.of(authority)
         );
 
         TokenDto tokenDto = jwtProvider.createToken(authentication);
-        saveRefreshToken(member.getEmail(), tokenDto.getRefreshToken());
+        saveRefreshToken(user.getEmail(), tokenDto.getRefreshToken());
         return tokenDto;
     }
 

@@ -9,10 +9,10 @@ import java.util.UUID;
 
 @Getter
 public class PrincipalDetails extends User {
-    private final UUID memberId; // 실제 DB(users.id)의 PK 값
+    private final UUID userId; // 실제 DB(users.id)의 PK 값
 
-    public PrincipalDetails(UUID memberId, String username, String password, Collection<? extends GrantedAuthority> authorities) {
+    public PrincipalDetails(UUID userId, String username, String password, Collection<? extends GrantedAuthority> authorities) {
         super(username, password, authorities);
-        this.memberId = memberId;
+        this.userId = userId;
     }
 }

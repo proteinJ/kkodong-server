@@ -62,15 +62,15 @@ public class DogService {
     }
 
     @Transactional
-    public void animalDelete(UUID memberId, UUID dogId) {
-        Dog dog = getDog(memberId, dogId);
+    public void animalDelete(UUID userId, UUID dogId) {
+        Dog dog = getDog(userId, dogId);
 
         dogRepository.delete(dog);
     }
 
     @Transactional
-    public DogResponse.patch animalPatch(UUID memberId, UUID dogId, DogRequest.patch request) {
-        Dog dog = getDog(memberId, dogId);
+    public DogResponse.patch animalPatch(UUID userId, UUID dogId, DogRequest.patch request) {
+        Dog dog = getDog(userId, dogId);
 
         dog.patch(
             request.name(),
@@ -86,9 +86,9 @@ public class DogService {
         return toPatchResponse(dog);
     }
 
-    private @NonNull Dog getDog(UUID memberId, UUID dogId) {
+    private @NonNull Dog getDog(UUID userId, UUID dogId) {
         Dog dog = dogRepository.findByDogId(dogId);
-        if (!dog.getOwnerId().equals(memberId)) {
+        if (!dog.getOwnerId().equals(userId)) {
             throw new BusinessException(ErrorCode.METHOD_NOT_ALLOWED);
         }
         return dog;
@@ -109,15 +109,15 @@ public class DogService {
     }
 
     @Transactional
-    public DogResponse.detailInfo animalGet(UUID memberId, UUID dogId) {
-        Dog dog = getDog(memberId, dogId);
+    public DogResponse.detailInfo animalGet(UUID userId, UUID dogId) {
+        Dog dog = getDog(userId, dogId);
 
         return toResponse(dog);
     }
 
     @Transactional
-    public DogResponse.detailInfo animalPhoto(UUID memberId, UUID dogId, MultipartFile file) {
-        Dog dog = getDog(memberId, dogId);
+    public DogResponse.detailInfo animalPhoto(UUID userId, UUID dogId, MultipartFile file) {
+        Dog dog = getDog(userId, dogId);
 
         String imageUrl = imageStorageService.upload(file, "dogs/" + dogId);
         dog.updateProfileImage(imageUrl);
@@ -125,8 +125,8 @@ public class DogService {
         return toResponse(dog);
     }
 
-    public List<DogResponse.detailInfo> animalListGet(UUID memberId) {
-        List<Dog> dogList = dogRepository.findByOwnerId(memberId);
+    public List<DogResponse.detailInfo> animalListGet(UUID userId) {
+        List<Dog> dogList = dogRepository.findByOwnerId(userId);
         return dogList.stream().map(this::toResponse).toList();
     }
 }

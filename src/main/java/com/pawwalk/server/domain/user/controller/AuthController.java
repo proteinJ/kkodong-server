@@ -1,10 +1,10 @@
-package com.pawwalk.server.domain.member.controller;
+package com.pawwalk.server.domain.user.controller;
 
-import com.pawwalk.server.domain.member.domain.TokenDto;
-import com.pawwalk.server.domain.member.dto.LoginRequest;
-import com.pawwalk.server.domain.member.dto.RefreshRequest;
-import com.pawwalk.server.domain.member.dto.SignupRequest;
-import com.pawwalk.server.domain.member.service.AuthService;
+import com.pawwalk.server.domain.user.domain.TokenDto;
+import com.pawwalk.server.domain.user.dto.LoginRequest;
+import com.pawwalk.server.domain.user.dto.RefreshRequest;
+import com.pawwalk.server.domain.user.dto.SignupRequest;
+import com.pawwalk.server.domain.user.service.AuthService;
 import com.pawwalk.server.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirements;

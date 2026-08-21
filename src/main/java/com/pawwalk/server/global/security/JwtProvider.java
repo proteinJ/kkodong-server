@@ -1,6 +1,6 @@
 package com.pawwalk.server.global.security;
 
-import com.pawwalk.server.domain.member.domain.TokenDto;
+import com.pawwalk.server.domain.user.domain.TokenDto;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
@@ -51,9 +51,9 @@ public class JwtProvider {
                 .map(GrantedAuthority::getAuthority)
                 .collect(Collectors.joining(","));
 
-        UUID memberId = null;
+        UUID userId = null;
         if (auth.getPrincipal() instanceof PrincipalDetails principal) {
-            memberId = principal.getMemberId();
+            userId = principal.getUserId();
         }
 
         long now = (new Date()).getTime();
@@ -62,7 +62,7 @@ public class JwtProvider {
 
         String accessToken = Jwts.builder()
                 .setSubject(auth.getName())
-                .claim("memberId", memberId != null ? memberId.toString() : null)
+                .claim("userId", userId != null ? userId.toString() : null)
                 .claim(AUTHORITIES_KEY, authorities)
                 .setExpiration(accessTokenExpiresIn)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -82,10 +82,10 @@ public class JwtProvider {
     }
 
     /**
-     * 소셜/외부 로그인(Sign in with Apple 등) 검증 후 memberId/email/권한만으로 발급.
+     * 소셜/외부 로그인(Sign in with Apple 등) 검증 후 userId/email/권한만으로 발급.
      * Apple 로그인 추가 시: Apple identity token을 JWKS로 검증한 뒤 이 메서드로 토큰 발급.
      */
-    public TokenDto createTokenForSocial(UUID memberId, String email, String roleOrAuthority) {
+    public TokenDto createTokenForSocial(UUID userId, String email, String roleOrAuthority) {
         String authority = roleOrAuthority;
         if (authority != null && !authority.startsWith("ROLE_")) {
             authority = "ROLE_" + authority;
@@ -100,7 +100,7 @@ public class JwtProvider {
 
         String accessToken = Jwts.builder()
                 .setSubject(email)
-                .claim("memberId", memberId != null ? memberId.toString() : null)
+                .claim("userId", userId != null ? userId.toString() : null)
                 .claim(AUTHORITIES_KEY, authority)
                 .setExpiration(accessTokenExpiresIn)
                 .signWith(key, SignatureAlgorithm.HS256)
@@ -138,11 +138,11 @@ public class JwtProvider {
                         .map(SimpleGrantedAuthority::new)
                         .collect(Collectors.toList());
 
-        Object memberIdObj = claims.get("memberId");
-        UUID memberId = memberIdObj != null ? UUID.fromString(memberIdObj.toString()) : null;
+        Object userIdObj = claims.get("userId");
+        UUID userId = userIdObj != null ? UUID.fromString(userIdObj.toString()) : null;
 
         PrincipalDetails principal = new PrincipalDetails(
-                memberId,
+                userId,
                 claims.getSubject(),
                 "",
                 authorities

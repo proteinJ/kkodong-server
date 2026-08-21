@@ -1,4 +1,4 @@
-package com.pawwalk.server.domain.member.repository;
+package com.pawwalk.server.domain.user.repository;
 
 import com.pawwalk.server.global.security.RefreshToken;
 import org.springframework.data.repository.CrudRepository;

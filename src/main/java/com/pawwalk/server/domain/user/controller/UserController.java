@@ -1,8 +1,8 @@
-package com.pawwalk.server.domain.member.controller;
+package com.pawwalk.server.domain.user.controller;
 
-import com.pawwalk.server.domain.member.dto.MemberResponse;
-import com.pawwalk.server.domain.member.dto.PasswordChangeRequest;
-import com.pawwalk.server.domain.member.service.MemberService;
+import com.pawwalk.server.domain.user.dto.UserResponse;
+import com.pawwalk.server.domain.user.dto.PasswordChangeRequest;
+import com.pawwalk.server.domain.user.service.UserService;
 import com.pawwalk.server.global.common.ApiResponse;
 import com.pawwalk.server.global.security.PrincipalDetails;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,18 +12,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Member", description = "회원 정보 조회/수정/탈퇴 API")
+@Tag(name = "User", description = "회원 정보 조회/수정/탈퇴 API")
 @RestController
-@RequestMapping("/api/v1/members")
+@RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
-public class MemberController {
+public class UserController {
 
-    private final MemberService memberService;
+    private final UserService userService;
 
     @Operation(summary = "내 정보 조회", description = "로그인한 회원 본인의 정보를 조회합니다.")
     @GetMapping("/me")
-    public ApiResponse<MemberResponse> getMe(@AuthenticationPrincipal PrincipalDetails principal) {
-        return ApiResponse.success("조회 성공", memberService.getMe(principal.getMemberId()));
+    public ApiResponse<UserResponse> getMe(@AuthenticationPrincipal PrincipalDetails principal) {
+        return ApiResponse.success("조회 성공", userService.getMe(principal.getUserId()));
     }
 
     @Operation(summary = "비밀번호 변경", description = "현재 비밀번호를 확인한 뒤 새 비밀번호로 변경합니다.")
@@ -31,7 +31,7 @@ public class MemberController {
     public ApiResponse<Void> changePassword(
             @AuthenticationPrincipal PrincipalDetails principal,
             @Valid @RequestBody PasswordChangeRequest request) {
-        memberService.changePassword(principal.getMemberId(), request);
+        userService.changePassword(principal.getUserId(), request);
         return ApiResponse.success("비밀번호 변경 완료");
     }
 
@@ -42,7 +42,7 @@ public class MemberController {
     @Operation(summary = "회원 탈퇴", description = "로그인한 회원 본인의 계정을 삭제합니다.")
     @DeleteMapping("/me")
     public ApiResponse<Void> deleteMe(@AuthenticationPrincipal PrincipalDetails principal) {
-        memberService.deleteMe(principal.getMemberId());
+        userService.deleteMe(principal.getUserId());
         return ApiResponse.success("탈퇴 완료");
     }
 }

@@ -20,10 +20,10 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "CM002", "잘못된 HTTP 메서드 호출입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "CM003", "서버 내부 오류가 발생했습니다."),
 
-    // Member (회원 관련 — 이메일/비밀번호 기반 인증 공통)
+    // User (회원 관련 — 이메일/비밀번호 기반 인증 공통)
     EMAIL_DUPLICATION(HttpStatus.BAD_REQUEST, "M001", "이미 존재하는 이메일입니다."),
     INVALID_LOGIN_CREDENTIALS(HttpStatus.BAD_REQUEST, "M003", "이메일 또는 비밀번호가 일치하지 않습니다."),
-    MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "M004", "존재하지 않는 회원입니다."),
+    USER_NOT_FOUND(HttpStatus.NOT_FOUND, "M004", "존재하지 않는 회원입니다."),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "M005", "비밀번호가 올바르지 않습니다."),
 
     // Auth (인증 관련)

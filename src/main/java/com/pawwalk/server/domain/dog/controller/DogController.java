@@ -32,7 +32,7 @@ public class DogController {
     public ResponseEntity<ApiResponse<DogResponse.detailInfo>> dogRegistration(
             @AuthenticationPrincipal PrincipalDetails principal,
             @Valid @RequestBody DogRequest.registration request) {
-        DogResponse.detailInfo response = dogService.animalRegistration(principal.getMemberId(), request);
+        DogResponse.detailInfo response = dogService.animalRegistration(principal.getUserId(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success("반려견 등록 완료", response));
     }
 
@@ -41,7 +41,7 @@ public class DogController {
     public ResponseEntity<ApiResponse<String>> dogDelete(
             @AuthenticationPrincipal PrincipalDetails principal,
             @PathVariable UUID dogId) {
-        dogService.animalDelete(principal.getMemberId(), dogId);
+        dogService.animalDelete(principal.getUserId(), dogId);
         return ResponseEntity.ok(ApiResponse.success("반려견 삭제 완료"));
     }
 
@@ -51,7 +51,7 @@ public class DogController {
             @AuthenticationPrincipal PrincipalDetails principal,
             @PathVariable UUID dogId,
             @Valid @RequestBody DogRequest.patch request) {
-        DogResponse.patch response = dogService.animalPatch(principal.getMemberId(), dogId, request);
+        DogResponse.patch response = dogService.animalPatch(principal.getUserId(), dogId, request);
         return ResponseEntity.ok(ApiResponse.success("반려견 수정 완료", response));
     }
 
@@ -60,7 +60,7 @@ public class DogController {
     public ResponseEntity<ApiResponse<DogResponse.detailInfo>> dogDetailGet(
             @AuthenticationPrincipal PrincipalDetails principal,
             @PathVariable UUID dogId) {
-        DogResponse.detailInfo response = dogService.animalGet(principal.getMemberId(), dogId);
+        DogResponse.detailInfo response = dogService.animalGet(principal.getUserId(), dogId);
         return ResponseEntity.ok(ApiResponse.success("반려견 상세 조회 완료", response));
     }
 
@@ -68,7 +68,7 @@ public class DogController {
     @GetMapping
     public ResponseEntity<ApiResponse<List<DogResponse.detailInfo>>> dogListGet(
             @AuthenticationPrincipal PrincipalDetails principal) {
-        List<DogResponse.detailInfo> response = dogService.animalListGet(principal.getMemberId());
+        List<DogResponse.detailInfo> response = dogService.animalListGet(principal.getUserId());
         return ResponseEntity.ok(ApiResponse.success("반려견 목록 조회 완료", response));
     }
 
@@ -78,7 +78,7 @@ public class DogController {
             @AuthenticationPrincipal PrincipalDetails principal,
             @PathVariable UUID dogId,
             @RequestParam("file") MultipartFile file) {
-        DogResponse.detailInfo response = dogService.animalPhoto(principal.getMemberId(), dogId, file);
+        DogResponse.detailInfo response = dogService.animalPhoto(principal.getUserId(), dogId, file);
         return ResponseEntity.ok(ApiResponse.success("반려견 이미지 변경 완료", response));
     }
 }

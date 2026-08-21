@@ -1,4 +1,4 @@
-package com.pawwalk.server.domain.member.domain;
+package com.pawwalk.server.domain.user.domain;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
