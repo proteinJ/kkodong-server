@@ -2,6 +2,7 @@ package com.kkodong.server.domain.user.controller;
 
 import com.kkodong.server.domain.user.dto.UserResponse;
 import com.kkodong.server.domain.user.dto.PasswordChangeRequest;
+import com.kkodong.server.domain.user.dto.UpdateRequest;
 import com.kkodong.server.domain.user.service.UserService;
 import com.kkodong.server.global.common.ApiResponse;
 import com.kkodong.server.global.security.PrincipalDetails;
@@ -35,14 +36,26 @@ public class UserController {
         return ApiResponse.success("비밀번호 변경 완료");
     }
 
-    /**
-     * 회원 탈퇴. Apple App Store 심사 가이드라인 5.1.1(v) — 가입 기능이 있는 앱은
-     * 앱 내 계정 삭제 기능이 필수라, iOS 클라이언트를 붙일 프로젝트라면 반드시 유지할 것.
-     */
+    @Operation(summary = "내 정보 수정", description = "로그인한 회원 본인의 정보를 수정합니다.")
+    @PatchMapping("/me")
+    public ApiResponse<UserResponse> patchMe(
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @Valid @RequestBody UpdateRequest request) {
+        UserResponse userResponse = userService.updateMyInfo(principal.getUserId(), request);
+        return ApiResponse.success("내 정보 수정 완료", userResponse);
+    }
+
     @Operation(summary = "회원 탈퇴", description = "로그인한 회원 본인의 계정을 삭제합니다.")
     @DeleteMapping("/me")
     public ApiResponse<Void> deleteMe(@AuthenticationPrincipal PrincipalDetails principal) {
         userService.deleteMe(principal.getUserId());
         return ApiResponse.success("탈퇴 완료");
+    }
+
+    @Operation(summary = "온보딩", description = "온보딩 정보 입력 받기 완료되었는가?")
+    @PatchMapping("/me/onboarding")
+    public ApiResponse<UserResponse> onboarding(@AuthenticationPrincipal PrincipalDetails principal) {
+        UserResponse userResponse = userService.onboarding(principal.getUserId());
+        return ApiResponse.success("온보딩 입력 완료", userResponse);
     }
 }

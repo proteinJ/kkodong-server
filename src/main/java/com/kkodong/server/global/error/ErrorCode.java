@@ -25,6 +25,7 @@ public enum ErrorCode {
     INVALID_LOGIN_CREDENTIALS(HttpStatus.BAD_REQUEST, "M003", "이메일 또는 비밀번호가 일치하지 않습니다."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "M004", "존재하지 않는 회원입니다."),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "M005", "비밀번호가 올바르지 않습니다."),
+    ONBOARDING_REQUIREMENTS_NOT_MET(HttpStatus.BAD_REQUEST, "M006", "온보딩에 필요한 정보(닉네임·위치·반려견)가 모두 입력되지 않았습니다."),
 
     // Auth (인증 관련)
     AUTHENTICATION_FAILED(HttpStatus.UNAUTHORIZED, "A001", "인증에 실패하였습니다."),

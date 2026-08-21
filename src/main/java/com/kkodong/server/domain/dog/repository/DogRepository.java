@@ -8,4 +8,6 @@ import java.util.UUID;
 
 public interface DogRepository extends JpaRepository<Dog, UUID> {
     List<Dog> findByOwnerId(UUID ownerId);
+
+    boolean existsByOwnerId(UUID userId);
 }

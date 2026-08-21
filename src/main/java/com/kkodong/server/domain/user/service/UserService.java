@@ -1,27 +1,36 @@
 package com.kkodong.server.domain.user.service;
 
+import com.kkodong.server.domain.dog.repository.DogRepository;
 import com.kkodong.server.domain.user.domain.User;
+import com.kkodong.server.domain.user.domain.UserProfileUpdate;
 import com.kkodong.server.domain.user.dto.UserResponse;
 import com.kkodong.server.domain.user.dto.PasswordChangeRequest;
+import com.kkodong.server.domain.user.dto.UpdateRequest;
 import com.kkodong.server.domain.user.repository.UserRepository;
 import com.kkodong.server.global.error.BusinessException;
 import com.kkodong.server.global.error.ErrorCode;
+
 import java.util.UUID;
+
+import com.kkodong.server.global.utill.Locations;
 import lombok.RequiredArgsConstructor;
+import org.locationtech.jts.geom.Point;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final DogRepository dogRepository;
 
     public UserResponse getMe(UUID userId) {
         User user = findUser(userId);
-        return new UserResponse(user.getId(), user.getEmail(), user.getRole().name());
+        return UserResponse.from(user);
     }
 
     @Transactional
@@ -45,5 +54,31 @@ public class UserService {
     private User findUser(UUID userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    @Transactional
+    public UserResponse updateMyInfo(UUID userId, UpdateRequest request) {
+        User user = findUser(userId);
+
+        Point point = request.homeLocation() == null ? null : Locations.of(request.homeLocation().lat(), request.homeLocation().lng());
+
+        user.updateProfile(new UserProfileUpdate(request.displayName(), request.profileImageUrl(), point));
+        return UserResponse.from(user);
+    }
+
+    @Transactional
+    public UserResponse onboarding(UUID userId) {
+        User user = findUser(userId);
+
+        boolean hasDog = dogRepository.existsByOwnerId(userId);
+
+        // 온보딩 과정에서 필수 정보가 입력이 되었는가?
+        if (user.getDisplayName() == null || user.getHomeLocation() == null || !hasDog) {
+            throw new BusinessException(ErrorCode.ONBOARDING_REQUIREMENTS_NOT_MET);
+        }
+
+        user.completeOnboarding();
+
+        return UserResponse.from(user);
     }
 }
