@@ -2,7 +2,9 @@ package com.kkodong.server.domain.dog.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 public class DogResponse {
@@ -18,7 +20,10 @@ public class DogResponse {
         @Schema(description = "활동성", example = "HIGH") String energyLevel,
         @Schema(description = "중성화 여부") Boolean neutered,
         @Schema(description = "프로필 이미지 URL") String profileImageUrl,
-        @Schema(description = "동물등록번호", example = "410000012345678") String animalRegistrationNumber
+        @Schema(description = "누끼(배경 제거) 이미지 URL") String cutoutImageUrl,
+        @Schema(description = "동물등록번호", example = "410000012345678") String animalRegistrationNumber,
+        @Schema(description = "성향 태그", example = "[\"활발함\",\"사교적\"]") List<String> personalityTraits,
+        @Schema(description = "몸무게(kg)", example = "5.6") BigDecimal weightKg
     ) {}
 
     public record patch(
@@ -30,7 +35,10 @@ public class DogResponse {
         @Schema(description = "활동성", example = "HIGH") String energyLevel,
         @Schema(description = "중성화 여부") Boolean neutered,
         @Schema(description = "프로필 이미지 URL") String profileImageUrl,
-        @Schema(description = "동물등록번호", example = "410000012345678") String animalRegistrationNumber
+        @Schema(description = "누끼(배경 제거) 이미지 URL") String cutoutImageUrl,
+        @Schema(description = "동물등록번호", example = "410000012345678") String animalRegistrationNumber,
+        @Schema(description = "성향 태그", example = "[\"차분함\"]") List<String> personalityTraits,
+        @Schema(description = "몸무게(kg)", example = "7.2") BigDecimal weightKg
     ) {}
 
 }

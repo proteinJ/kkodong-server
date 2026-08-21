@@ -81,4 +81,15 @@ public class DogController {
         DogResponse.detailInfo response = dogService.animalPhoto(principal.getUserId(), dogId, file);
         return ResponseEntity.ok(ApiResponse.success("반려견 이미지 변경 완료", response));
     }
+
+    @Operation(summary = "내 반려견 누끼 이미지 등록",
+            description = "배경이 제거된 PNG를 업로드합니다. 배경 제거는 클라이언트 온디바이스(Vision)에서 수행합니다.")
+    @PostMapping(value = "/{dogId}/cutout", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<DogResponse.detailInfo>> dogCutoutUpdate(
+            @AuthenticationPrincipal PrincipalDetails principal,
+            @PathVariable UUID dogId,
+            @RequestParam("file") MultipartFile file) {
+        DogResponse.detailInfo response = dogService.animalCutout(principal.getUserId(), dogId, file);
+        return ResponseEntity.ok(ApiResponse.success("반려견 누끼 이미지 등록 완료", response));
+    }
 }
