@@ -43,5 +43,9 @@ jwt:
   access-token-validity-in-milliseconds: ${JWT_AT_VALIDITY:3600000}      # 1시간
   refresh-token-validity-in-milliseconds: ${JWT_RT_VALIDITY:604800000}  # 7일
 
+apple:
+  # iOS 앱의 Bundle Identifier. identity_token의 aud claim과 일치해야 검증 통과
+  bundle-id: ${APPLE_BUNDLE_ID:}
+
 server:
   port: ${SERVER_PORT:8080}

@@ -1,14 +1,16 @@
 package com.kkodong.server.domain.user.service;
 
-import com.kkodong.server.domain.user.domain.User;
+import com.nimbusds.jwt.JWTClaimsSet;
 import com.kkodong.server.domain.user.domain.Role;
 import com.kkodong.server.domain.user.domain.TokenDto;
+import com.kkodong.server.domain.user.domain.User;
 import com.kkodong.server.domain.user.dto.LoginRequest;
 import com.kkodong.server.domain.user.dto.SignupRequest;
 import com.kkodong.server.domain.user.repository.UserRepository;
 import com.kkodong.server.domain.user.repository.RefreshTokenRepository;
 import com.kkodong.server.global.error.BusinessException;
 import com.kkodong.server.global.error.ErrorCode;
+import com.kkodong.server.global.security.AppleIdTokenValidator;
 import com.kkodong.server.global.security.JwtProvider;
 import com.kkodong.server.global.security.PrincipalDetails;
 import com.kkodong.server.global.security.RefreshToken;
@@ -39,6 +41,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final JwtProvider jwtProvider;
     private final RedisTemplate<String, Object> redisTemplate;
+    private final AppleIdTokenValidator appleIdTokenValidator;
 
     @Transactional
     public void signup(SignupRequest request) {
@@ -66,6 +69,42 @@ public class AuthService {
         TokenDto tokenDto = jwtProvider.createToken(authentication);
         saveRefreshToken(authentication.getName(), tokenDto.getRefreshToken());
         return tokenDto;
+    }
+
+    /**
+     * Apple identity token 검증 후 sub(appleUserId)로 기존 회원을 찾거나, 없으면 신규 가입시킨다.
+     * email은 identity_token의 email claim에서 가져온다(Apple ID 토큰은 매 로그인마다 email claim을 포함).
+     */
+    @Transactional
+    public TokenDto loginWithApple(String identityToken) {
+        JWTClaimsSet claims = appleIdTokenValidator.verify(identityToken);
+        String appleUserId = claims.getSubject();
+
+        User user = userRepository.findByAppleUserId(appleUserId)
+                .orElseGet(() -> signUpAppleUser(appleUserId, claims));
+
+        TokenDto tokenDto = jwtProvider.createTokenForSocial(user.getId(), user.getEmail(), user.getRole().name());
+        saveRefreshToken(user.getEmail(), tokenDto.getRefreshToken());
+        return tokenDto;
+    }
+
+    private User signUpAppleUser(String appleUserId, JWTClaimsSet claims) {
+        String email;
+        try {
+            email = claims.getStringClaim("email");
+        } catch (java.text.ParseException e) {
+            throw new BusinessException(ErrorCode.INVALID_APPLE_TOKEN);
+        }
+        if (email == null || userRepository.existsByEmail(email)) {
+            throw new BusinessException(ErrorCode.EMAIL_DUPLICATION);
+        }
+
+        User user = com.kkodong.server.domain.user.domain.User.builder()
+                .email(email)
+                .appleUserId(appleUserId)
+                .role(Role.USER)
+                .build();
+        return userRepository.save(user);
     }
 
     /**

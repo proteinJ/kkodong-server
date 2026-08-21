@@ -1,6 +1,7 @@
 package com.kkodong.server.domain.user.controller;
 
 import com.kkodong.server.domain.user.domain.TokenDto;
+import com.kkodong.server.domain.user.dto.AppleLoginRequest;
 import com.kkodong.server.domain.user.dto.LoginRequest;
 import com.kkodong.server.domain.user.dto.RefreshRequest;
 import com.kkodong.server.domain.user.dto.SignupRequest;
@@ -37,6 +38,14 @@ public class AuthController {
     public ResponseEntity<ApiResponse<TokenDto>> login(@Valid @RequestBody LoginRequest request) {
         TokenDto tokenDto = authService.login(request);
         return ResponseEntity.ok(ApiResponse.success("로그인 성공", tokenDto));
+    }
+
+    @Operation(summary = "Sign in with Apple", description = "Apple identity token을 검증하여 로그인/가입 처리 후 access/refresh 토큰을 발급받습니다. 인증 불필요.")
+    @SecurityRequirements
+    @PostMapping("/apple")
+    public ResponseEntity<ApiResponse<TokenDto>> loginWithApple(@Valid @RequestBody AppleLoginRequest request) {
+        TokenDto tokenDto = authService.loginWithApple(request.identityToken());
+        return ResponseEntity.ok(ApiResponse.success("Apple 로그인 성공", tokenDto));
     }
 
     @Operation(summary = "토큰 재발급", description = "refresh token으로 access/refresh 토큰을 재발급받습니다. 인증 불필요.")
