@@ -1,0 +1,640 @@
+{
+  "info": {
+    "name": "꼬동 (KKODONG) API",
+    "description": "꼬동 백엔드 스모크/회귀 컬렉션.\n\n실행 전:\n  docker compose up -d postgres redis\n  ./gradlew bootRun --args='--spring.profiles.active=local --spring.data.redis.port=6380'\n\nRunner 로 1번부터 순서대로 실행하세요. 2번이 저장한 토큰을 이후 요청이 상속받습니다.\n온보딩 완료(10번)는 닉네임·자택위치·반려견 1마리를 요구하므로,\n반드시 4번(프로필 수정)과 7번(반려견 등록) 뒤에 와야 합니다.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8090/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "testEmail",
+      "value": "postman@test.com",
+      "type": "string"
+    },
+    {
+      "key": "testPassword",
+      "value": "Passw0rd!23",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "firstOnboardedAt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dogId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "emailSeq",
+      "value": "0",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. 회원가입",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/signup",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "signup"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "성공 시 201 Created. 이미 가입된 계정이면 400 M001 — 반복 실행을 위해 둘 다 통과로 봅니다."
+      },
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "// 실행할 때마다 새 계정을 쓴다 — 중간에 멈춰 정리(12번)가 안 돌아도",
+              "// 다음 실행이 '이미 가입됨'에 막히지 않는다.",
+              "//",
+              "// ⚠️ body 에 {{$timestamp}} 를 직접 쓰면 안 된다. 동적 변수는 요청마다 다시",
+              "//    평가되어 1번(가입)과 2번(로그인)이 서로 다른 이메일을 쓰게 된다.",
+              "//    여기서 한 번 만들어 컬렉션 변수에 저장해야 이후 요청이 같은 값을 본다.",
+              "",
+              "// seq: 읽기 좋은 일련번호. Postman GUI 에서는 실행 간 유지되지만",
+              "//      newman(CLI)은 매번 0 부터 시작하므로 이것만으로는 충돌한다.",
+              "const seq = Number(pm.collectionVariables.get('emailSeq') || 0) + 1;",
+              "pm.collectionVariables.set('emailSeq', seq);",
+              "",
+              "// stamp: 실행 시각 뒤 6자리. 어느 환경에서든 중복을 막는 실제 방어선.",
+              "const stamp = Date.now().toString().slice(-6);",
+              "pm.collectionVariables.set('testEmail', `test${seq}-${stamp}@test.com`);",
+              "",
+              "console.log('이번 실행 계정:', pm.collectionVariables.get('testEmail'));"
+            ]
+          }
+        },
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"가입되었거나 이미 존재한다\", function () {",
+              "    const created = pm.response.code === 201;",
+              "    const dup = pm.response.code === 400 && pm.response.json().code === \"M001\";",
+              "    pm.expect(created || dup, \"예상 밖 응답: \" + pm.response.code).to.be.true;",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. 로그인 (토큰 저장)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "auth",
+            "login"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{testEmail}}\",\n  \"password\": \"{{testPassword}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "응답의 accessToken을 컬렉션 변수에 저장합니다. 이후 요청은 이 값을 자동으로 씁니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"로그인 성공\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "const token = pm.response.json()?.data?.accessToken;",
+              "",
+              "pm.test(\"토큰을 받았다\", function () {",
+              "    pm.expect(token, \"응답에 accessToken 이 없습니다: \"",
+              "        + JSON.stringify(pm.response.json())).to.be.a(\"string\").and.not.empty;",
+              "});",
+              "",
+              "// 이후 요청의 Authorization 헤더가 이 값을 쓴다",
+              "pm.collectionVariables.set(\"accessToken\", token);",
+              "console.log(\"토큰 저장됨:\", token ? token.slice(0, 20) + \"...\" : \"(없음)\");"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. 내 정보 조회",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "me"
+          ]
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 이고 필드가 모두 온다\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    const d = pm.response.json().data;",
+              "    pm.expect(d).to.have.property(\"displayName\");",
+              "    pm.expect(d).to.have.property(\"profileImageUrl\");",
+              "    pm.expect(d).to.have.property(\"onboardingCompletedAt\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. 프로필 수정 (정상 좌표)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "me"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"displayName\": \"콩이맘\",\n  \"homeLocation\": {\n    \"lat\": 37.5665,\n    \"lng\": 126.978\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "서울시청 좌표. DB에는 ST_Y=위도(37.5665), ST_X=경도(126.978)로 들어가야 합니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"수정 성공\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().data.displayName).to.eql(\"콩이맘\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. ⚠️ 위도 범위 초과 → 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "me"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"homeLocation\": {\n    \"lat\": 200,\n    \"lng\": 127\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "검증이 없으면 200이 나가고, PostGIS geography가 위도 200을 -20으로 조용히 정규화해 저장합니다. 에러가 안 나므로 반드시 DTO에서 막아야 합니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"범위 밖 위도는 400\", function () {",
+              "    pm.expect(pm.response.code,",
+              "        \"@DecimalMax 와 부모 필드의 @Valid 를 확인하세요\").to.eql(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. ⚠️ lng 누락 → 400",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "me"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"homeLocation\": {\n    \"lat\": 37.5\n  }\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Double이 null인 채로 Locations.of(double, double)에 들어가면 NPE로 500이 납니다. 클라이언트 입력 오류는 400이어야 합니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"좌표 일부 누락은 400\", function () {",
+              "    pm.expect(pm.response.code,",
+              "        \"500이면 Locations.of() 언박싱 NPE 입니다\").to.eql(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. 반려견 등록",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/dogs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "dogs"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"초코\",\n  \"breed\": \"포메라니안\",\n  \"size\": \"SMALL\",\n  \"personalityTraits\": [\n    \"활발함\",\n    \"사교적\"\n  ],\n  \"weightKg\": 3.4\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"등록 성공\", function () {",
+              "    pm.response.to.have.status(201);",
+              "    pm.expect(pm.response.json().data.weightKg,",
+              "        \"BigDecimal 이 아니면 소수점이 잘립니다\").to.eql(3.4);",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"dogId\", pm.response.json().data.id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. 성향 태그 4개 → 400",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/dogs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "dogs"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"테스트\",\n  \"personalityTraits\": [\n    \"활발함\",\n    \"사교적\",\n    \"차분함\",\n    \"낯가림\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "개수 제한은 DTO의 @Size와 DB CHECK 제약이 이중으로 막습니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"태그 4개는 400\", function () {",
+              "    pm.expect(pm.response.code, \"DogRequest 의 @Size(max = 3)\").to.eql(400);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "9. 유효하지 않은 태그 → 400 D004",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/dogs",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "dogs"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"테스트\",\n  \"personalityTraits\": [\n    \"무서움\"\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "값 유효성은 서버의 PersonalityTrait enum이 검증합니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"확정 8종에 없는 태그는 400 D004\", function () {",
+              "    pm.expect(pm.response.code).to.eql(400);",
+              "    pm.expect(pm.response.json().code).to.eql(\"D004\");",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. 온보딩 완료 처리",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/me/onboarding",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "me",
+            "onboarding"
+          ]
+        },
+        "description": "body 없음. 완료 시각을 저장해 다음 요청에서 멱등성을 검증합니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"온보딩 완료\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().data.onboardingCompletedAt).to.not.be.null;",
+              "});",
+              "",
+              "pm.collectionVariables.set(\"firstOnboardedAt\",",
+              "    pm.response.json().data.onboardingCompletedAt);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. 온보딩 재호출 (멱등성)",
+      "request": {
+        "method": "PATCH",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/me/onboarding",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "me",
+            "onboarding"
+          ]
+        },
+        "description": "PATCH는 멱등해야 합니다. 시각이 갱신되면 최초 완료 시각(퍼널 지표)이 소실됩니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"재호출해도 최초 완료 시각이 그대로\", function () {",
+              "    pm.response.to.have.status(200);",
+              "    pm.expect(pm.response.json().data.onboardingCompletedAt,",
+              "        \"시각이 갱신됨 — completeOnboarding() 의 null 가드를 확인하세요\")",
+              "        .to.eql(pm.collectionVariables.get(\"firstOnboardedAt\"));",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12. 정리 — 테스트 계정 삭제",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/users/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "users",
+            "me"
+          ]
+        },
+        "description": "반려견은 ON DELETE CASCADE 로 함께 삭제됩니다. 컬렉션을 반복 실행할 수 있게 마지막에 정리합니다."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"탈퇴 성공\", function () {",
+              "    pm.response.to.have.status(200);",
+              "});",
+              "",
+              "pm.collectionVariables.unset(\"accessToken\");"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
