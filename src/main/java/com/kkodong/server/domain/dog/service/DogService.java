@@ -87,9 +87,10 @@ public class DogService {
     }
 
     private @NonNull Dog getDog(UUID userId, UUID dogId) {
-        Dog dog = dogRepository.findByDogId(dogId);
+        Dog dog = dogRepository.findById(dogId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.DOG_NOT_FOUND));
         if (!dog.getOwnerId().equals(userId)) {
-            throw new BusinessException(ErrorCode.METHOD_NOT_ALLOWED);
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
         return dog;
     }

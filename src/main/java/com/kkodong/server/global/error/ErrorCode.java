@@ -35,7 +35,8 @@ public enum ErrorCode {
 
     // Dog (반려견 관련)
     INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "D001", "이미지 파일(jpg/png/webp)만 업로드할 수 있습니다."),
-    IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "D002", "이미지 업로드에 실패했습니다.");
+    IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "D002", "이미지 업로드에 실패했습니다."),
+    DOG_NOT_FOUND(HttpStatus.NOT_FOUND, "D003", "존재하지 않는 반려견입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
