@@ -19,6 +19,7 @@ public enum ErrorCode {
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "CM001", "올바르지 않은 입력값입니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, "CM002", "잘못된 HTTP 메서드 호출입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "CM003", "서버 내부 오류가 발생했습니다."),
+    DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "CM004", "이미 존재하는 데이터입니다."),
 
     // User (회원 관련 — 이메일/비밀번호 기반 인증 공통)
     EMAIL_DUPLICATION(HttpStatus.BAD_REQUEST, "M001", "이미 존재하는 이메일입니다."),
@@ -39,7 +40,17 @@ public enum ErrorCode {
     INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "D001", "이미지 파일(jpg/png/webp)만 업로드할 수 있습니다."),
     IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "D002", "이미지 업로드에 실패했습니다."),
     DOG_NOT_FOUND(HttpStatus.NOT_FOUND, "D003", "존재하지 않는 반려견입니다."),
-    INVALID_PERSONALITY_TRAIT(HttpStatus.BAD_REQUEST, "D004", "유효하지 않은 성향 태그입니다.");
+    INVALID_PERSONALITY_TRAIT(HttpStatus.BAD_REQUEST, "D004", "유효하지 않은 성향 태그입니다."),
+
+    // Safety (차단 B / 신고 R — 같은 safety 패키지지만 접두사는 기능 단위로 나눈다)
+    SELF_BLOCK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "B001", "자기 자신은 차단할 수 없습니다."),
+
+    SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "R001", "자기 자신은 신고할 수 없습니다."),
+    REPORT_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "R002", "신고 대상을 찾을 수 없습니다."),
+    DUPLICATE_REPORT(HttpStatus.CONFLICT, "R003", "이미 접수되어 처리 대기 중인 신고입니다."),
+    INVALID_REPORT_REASON(HttpStatus.BAD_REQUEST, "R004", "유효하지 않은 신고 사유입니다."),
+    INVALID_REPORT_TARGET_TYPE(HttpStatus.BAD_REQUEST, "R005", "유효하지 않은 신고 대상 유형입니다."),
+    UNSUPPORTED_REPORT_TARGET(HttpStatus.BAD_REQUEST, "R006", "아직 지원하지 않는 신고 대상입니다.");
 
     private final HttpStatus httpStatus;
     private final String code;
