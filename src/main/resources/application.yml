@@ -1,16 +1,16 @@
 spring:
   application:
-    name: pawwalk-server
+    name: kkodong-server
 
   datasource:
     # Supabase Postgres 연결 문자열로 교체 필요 (Supabase 대시보드 > Settings > Database)
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/pawwalk}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/kkodong}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
 
   jpa:
     hibernate:
-      ddl-auto: validate # 스키마는 Flyway가 관리, Hibernate는 엔티티-테이블 일치 여부만 검증
+      ddl-auto: ${JPA_DDL_AUTO:validate} # 스키마는 Flyway가 관리, 평소엔 validate로 엔티티-테이블 일치 여부만 검증
     show-sql: true
     properties:
       hibernate:
@@ -26,10 +26,26 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
 
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+r2:
+  endpoint: ${R2_ENDPOINT:}
+  access-key: ${R2_ACCESS_KEY:}
+  secret-key: ${R2_SECRET_KEY:}
+  bucket: ${R2_BUCKET:kkodong}
+  public-url: ${R2_PUBLIC_URL:}
+
 jwt:
   secret: ${JWT_SECRET:change-this-to-a-long-random-secret-in-production-env-var}
   access-token-validity-in-milliseconds: ${JWT_AT_VALIDITY:3600000}      # 1시간
   refresh-token-validity-in-milliseconds: ${JWT_RT_VALIDITY:604800000}  # 7일
+
+apple:
+  # iOS 앱의 Bundle Identifier. identity_token의 aud claim과 일치해야 검증 통과
+  bundle-id: ${APPLE_BUNDLE_ID:}
 
 server:
   port: ${SERVER_PORT:8080}

@@ -1,0 +1,18 @@
+# src/main/resources/application-local.yml
+spring:
+  # 로컬 Redis는 6380 — 6379는 다른 프로젝트 컨테이너가 점유 중이고
+  # 그쪽은 비밀번호가 걸려 있어 로그인(Refresh Token 저장)이 500으로 실패한다.
+  data:
+    redis:
+      port: 6380
+
+  datasource:
+    url: jdbc:postgresql://localhost:5433/kkodong
+    username: postgres
+    password: postgres
+r2:
+  endpoint: https://dummy.r2.cloudflarestorage.com
+  access-key: dummy
+  secret-key: dummy
+server:
+  port: 8090

@@ -1,0 +1,29 @@
+services:
+  redis:
+    image: redis:latest
+    container_name: kkodong-redis
+    ports:
+      - "6380:6379"   # 6379는 다른 프로젝트 컨테이너가 점유 중
+    restart: unless-stopped
+    volumes:
+      - kkodong-redis-data:/data
+
+  # 로컬 마이그레이션 검증용 Postgres.
+  # - postgis 이미지여야 함 (V1 첫 줄이 CREATE EXTENSION postgis)
+  # - 호스트 포트 5433 — 5432는 다른 프로젝트 컨테이너가 점유 중
+  postgres:
+    image: postgis/postgis:16-3.4
+    container_name: kkodong-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: kkodong
+    ports:
+      - "5433:5432"
+    restart: unless-stopped
+    volumes:
+      - kkodong-pg-data:/var/lib/postgresql/data
+
+volumes:
+  kkodong-redis-data:
+  kkodong-pg-data:

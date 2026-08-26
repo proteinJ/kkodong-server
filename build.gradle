@@ -4,7 +4,7 @@ plugins {
 	id 'io.spring.dependency-management' version '1.1.7'
 }
 
-group = 'com.pawwalk'
+group = 'com.kkodong'
 version = '0.0.1-SNAPSHOT'
 
 java {
@@ -33,16 +33,22 @@ dependencies {
 	runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
 	runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
 
+	// Sign in with Apple: identity token(JWT) 서명을 Apple JWKS(공개키)로 검증
+	implementation 'com.nimbusds:nimbus-jose-jwt:9.37.3'
+
 	// Swagger UI (SpringDoc OpenAPI) — 컨트롤러 어노테이션 기반 자동 문서화
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.5'
 
-	// PawWalk 전용: PostGIS 공간 쿼리 (DB_SCHEMA.sql의 geography(Point,4326) 매핑)
+	// 꼬동 전용: PostGIS 공간 쿼리 (DB_SCHEMA.sql의 geography(Point,4326) 매핑)
 	implementation 'org.hibernate.orm:hibernate-spatial'
 	implementation 'org.locationtech.jts:jts-core:1.19.0'
 
-	// PawWalk 전용: Flyway 마이그레이션 (DB_SCHEMA.sql -> V1__init.sql)
+	// 꼬동 전용: Flyway 마이그레이션 (DB_SCHEMA.sql -> V1__init.sql)
 	implementation 'org.flywaydb:flyway-core'
 	implementation 'org.flywaydb:flyway-database-postgresql'
+
+	// 꼬동 전용: Cloudflare R2(S3 호환) 반려견 이미지 업로드
+	implementation 'software.amazon.awssdk:s3:2.29.52'
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
