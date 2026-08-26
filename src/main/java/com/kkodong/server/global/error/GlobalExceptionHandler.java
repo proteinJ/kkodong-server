@@ -3,6 +3,7 @@ package com.kkodong.server.global.error;
 import com.kkodong.server.global.common.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -52,6 +53,16 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("서버 내부 오류가 발생했습니다."));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
+            DataIntegrityViolationException e, HttpServletRequest request
+    ) {
+        setErrorLoggingAttributes(request, ErrorCode.DUPLICATE_RESOURCE);
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(ErrorCode.DUPLICATE_RESOURCE.getMessage(),
+                        ErrorCode.DUPLICATE_RESOURCE.getCode()));
     }
 
     private void setErrorLoggingAttributes(HttpServletRequest request, ErrorCode errorCode) {
