@@ -5,10 +5,10 @@ import com.kkodong.server.domain.dog.domain.DogSize;
 import com.kkodong.server.domain.dog.domain.DogUpdate;
 import com.kkodong.server.domain.dog.domain.EnergyLevel;
 import com.kkodong.server.domain.dog.domain.Gender;
-import com.kkodong.server.domain.dog.domain.PersonalityTrait;
 import com.kkodong.server.domain.dog.dto.DogRequest;
 import com.kkodong.server.domain.dog.dto.DogResponse;
 import com.kkodong.server.domain.dog.repository.DogRepository;
+import com.kkodong.server.global.config.DogProperties;
 import com.kkodong.server.global.error.BusinessException;
 import com.kkodong.server.global.error.ErrorCode;
 import com.kkodong.server.global.storage.ImageStorageService;
@@ -29,6 +29,7 @@ public class DogService {
 
     private final DogRepository dogRepository;
     private final ImageStorageService imageStorageService;
+    private final DogProperties dogProperties;
 
     @Transactional
     public DogResponse.detailInfo animalRegistration(UUID ownerId, DogRequest.registration request) {
@@ -103,14 +104,16 @@ public class DogService {
 
     /**
      * 성향 태그 값 유효성 검증. 개수 제한(≤3)은 DTO의 @Size와 DB CHECK 제약이 담당하고,
-     * 여기서는 값이 확정된 8종에 속하는지만 본다(FRIEND_RECOMMENDATION_SPEC.md 1절).
+     * 여기서는 값이 설정된 목록({@code kkodong.dog.personality.tags})에 속하는지만 본다.
+     * 태그 세트는 실사용 데이터로 바뀔 수 있어 enum이 아니라 설정값으로 둔다
+     * (FRIEND_RECOMMENDATION_SPEC.md 1절).
      *
      * <p>null은 그대로 통과시킨다 — PATCH에서 "변경하지 않음"을 뜻하기 때문.
      */
     private List<String> validateTraits(List<String> traits) {
         if (traits == null) return null;
         for (String trait : traits) {
-            if (!PersonalityTrait.isValidLabel(trait)) {
+            if (!dogProperties.personality().isValidLabel(trait)) {
                 throw new BusinessException(ErrorCode.INVALID_PERSONALITY_TRAIT);
             }
         }
