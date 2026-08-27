@@ -61,6 +61,8 @@ Swagger UI: `/swagger-ui/index.html` (전체 API 문서 + JWT Authorize 테스�
 | POST/GET/PATCH/DELETE | `/api/v1/dogs`, `/api/v1/dogs/{id}` | 반려견 CRUD |
 | POST | `/api/v1/dogs/{id}/photo` | 프로필 사진 업로드 (Cloudflare R2) |
 | POST | `/api/v1/dogs/{id}/cutout` | 누끼 이미지 업로드 (Cloudflare R2) |
+| POST/DELETE/GET | `/api/v1/blocks`, `/api/v1/blocks/{blockedId}` | 유저 차단·해제·목록 (SAFETY-1) |
+| POST | `/api/v1/reports` | 신고 접수 (SAFETY-2) |
 
 ✅ **경로 리네임 완료(2026-08-19)**: `/api/v1/members/*` → `/api/v1/users/*`,
 `Member*` 클래스·식별자·JWT 클레임(`memberId` → `userId`)까지 전부 `User`로 통일.
@@ -87,15 +89,30 @@ DB 컬럼/테이블명은 snake_case 유지이므로 일괄 치환하면 안 된
   + `PersonalityTrait` enum 값 검증, `POST /dogs/{id}/cutout` 엔드포인트
 - `/members` → `/users` 리네임, `Member` → `User` 전면 통일
 
+**완료 (2026-08-27)**
+- 온보딩 완료 처리 API (`PATCH /users/me/onboarding`)
+- **SAFETY-1/2** — 차단 CRUD + 신고 접수, `V4__add_reports.sql`
+
 **먼저 해야 할 것**
-- 온보딩 완료 처리 API (`PATCH /users/me/onboarding`) — FOUNDATION-1의 마지막 미구현
 - 패스권 마릿수 제한 검증 (`users.subscription_tier` 기준, QUESTIONS.md Q13 대기)
 - 없는 경로가 404가 아니라 500으로 나감 — `NoResourceFoundException` 핸들러 추가
 
-**미구현 도메인** (착수 권장 순: safety → friend → chat → walk → card → community)
+**미구현 도메인** (착수 권장 순: friend → chat → walk → card → meet → community)
 - `friend`(추천/신청/친구), `chat`+`walk-appointment`, `walk`(세션/배변/저장경로),
-  `walk-card`, `community`(글/댓글/좋아요), `care-record`, `service-area`,
-  `subscription`, `block`/`report`
+  `walk-card`, `meet`(스침 상호 확인), `community`(글/댓글/좋아요), `care-record`,
+  `service-area`, `subscription`
+
+⚠️ **FRIEND 착수 시 `V5`에 동봉할 것** — `users.walk_time_slots`(JSONB, 최대 3개 CHECK).
+추천 가중치가 2026-08-27에 개정되어 **산책 시간대 15점**이 신설됐다. FRIEND 착수 전이면
+비용이 거의 0이지만, 나중이면 마이그레이션·온보딩·추천 쿼리를 다시 건드려야 한다.
+
+⚠️ **WALK 착수 시 필수** — 경로에 **타일 + 타임스탬프** 기록. 없으면 과거 데이터에
+소급이 불가능해 MEET-2(스침 상호 확인)를 영영 못 만든다.
+
+**만남 진입로 재설계 (2026-08-27)**: 온천천 현장 확인 결과 "개는 다니지만 모이지
+않는다"가 관측되어, 핫플레이스(지도 ○)를 Phase 2 이후로 연기하고
+**운영자 산책 모임(MEET-1) → 시간대 신호 → MEET-2** 순서로 전환했다.
+근거: `PawWalk-ios/docs/MARKET_ANALYSIS.md` 4절 ②.
 
 **폐기된 도메인** (V1 스키마에는 있으나 v3에서 개념 자체가 사라짐 — 구현하지 말 것)
 - `walk_posts`, `walk_post_requests`(→ `friend_requests`), `connections`(→ `friendships`),
