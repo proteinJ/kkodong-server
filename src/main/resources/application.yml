@@ -47,5 +47,73 @@ apple:
   # iOS 앱의 Bundle Identifier. identity_token의 aud claim과 일치해야 검증 통과
   bundle-id: ${APPLE_BUNDLE_ID:}
 
+# ============================================================
+# 도메인 설정 — 값 목록은 전부 여기서 관리한다
+#
+# 왜 enum이 아니라 설정값인가: 태그·슬롯 세트는 실사용 데이터로 바뀔 수 있는데
+# (의미가 겹치는 태그 병합 등), enum이면 바꿀 때마다 재빌드·재배포가 필요하다.
+# 설정값이면 파일 수정 + 재시작으로 끝난다.
+#   명세: PawWalk-ios/docs/FRIEND_RECOMMENDATION_SPEC.md
+#
+# ⚠️ 소유권 주의: 태그·슬롯은 '입력 검증'(dog/user)과 '점수 계산'(recommendation)
+#    양쪽에서 쓰인다. recommendation 아래 두면 강아지 등록이 추천 설정을 읽게 되어
+#    의존 방향이 뒤집힌다. 그래서 소유 도메인 아래 두고, recommendation이 참조한다.
+#
+# ⚠️ 개수 제한(최대 3개)은 여기 없다 — DTO의 @Size와 DB CHECK 제약이 담당한다.
+#    DB 제약을 바꾸려면 어차피 마이그레이션이 필요해 진짜로 동적일 수 없다.
+#    동적이어야 하는 것은 '값 목록'이지 '개수'가 아니다.
+# ============================================================
+kkodong:
+  dog:
+    personality:
+      # 성향 태그 — DB에는 한글 라벨 문자열 배열로 저장된다(예: ["활발함","사교적"]).
+      # 키가 곧 저장·전송되는 값이므로 여기 오타는 데이터를 오염시킨다.
+      #
+      # 두 형태를 두는 이유(문자열 조작 금지 — 명세 5절):
+      #   stem      : 나열할 때        → "활발·사교적인 성격이…"의 앞쪽
+      #   adnominal : 명사를 꾸밀 때   → "둘 다 활발한 성격이에요"
+      tags:
+        "[활발함]":     { stem: 활발,     adnominal: 활발한 }
+        "[차분함]":     { stem: 차분,     adnominal: 차분한 }
+        "[사교적]":     { stem: 사교적,   adnominal: 사교적인 }
+        "[낯가림]":     { stem: 낯가림,   adnominal: 낯가리는 }
+        "[겁많음]":     { stem: 겁많음,   adnominal: 겁많은 }
+        "[장난꾸러기]": { stem: 장난기,   adnominal: 장난기 많은 }
+        "[독립적]":     { stem: 독립적,   adnominal: 독립적인 }
+        "[애교많음]":   { stem: 애교,     adnominal: 애교많은 }
+
+  user:
+    walk-time-slot:
+      # 산책 시간대 — users.walk_time_slots(JSONB)에 키 문자열 배열로 저장된다.
+      # ⚠️ 성향 태그와 달리 키가 영문이라 오타가 눈에 띄지 않는다("moring").
+      #    기동 시 검증을 반드시 넣을 것 — API_SPEC.md 0절의 6개와 일치해야 한다.
+      # 값은 이유 문장에 그대로 들어간다: "{값}에 산책하는 것도 같아요"
+      slots:
+        dawn: 새벽
+        morning: 아침
+        noon: 낮
+        afternoon: 오후
+        evening: 저녁
+        night: 밤
+
+  # 친구 추천 알고리즘 (FRIEND-1)
+  # 전부 설정값인 이유: 이 숫자들의 유일한 검증 수단이 실사용 데이터인데, 값을 바꿀 때마다
+  # 재배포해야 하면 사실상 튜닝을 안 하게 된다.
+  # ⚠️ 누적 신청 100건 전에는 가중치를 조정하지 않는다 — 소음에 반응한 튜닝은 알고리즘을 더 나쁘게 만든다.
+  recommendation:
+    max-radius-km: 5              # distance_score 정규화 기준 + 확장 상한 (QUESTIONS.md Q8 잠정값)
+    radius-steps-km: [1, 2, 3, 5] # 후보가 limit 미만이면 이 순서로 확장. 반경은 첫 페이지에서 확정해 cursor에 인코딩
+    neutral-score: 0.5            # 데이터 미입력 시 중립값. 0이 아니다 — 미입력 유저가 하위에 깔리면 스스로 콜드스타트를 만든다
+    age-tolerance-months: 36      # age_score가 0이 되는 나이 차
+    weights:                      # 합계 100 (읽기 쉬우라고). 2026-08-27 개정 — time-slot 신설
+      distance: 30
+      time-slot: 15
+      personality: 20
+      age: 15
+      size: 12
+      breed: 8
+      gender: 0                   # 초기 미사용 — 어떤 조합이 더 나은지 근거가 없다
+      neutered: 0                 # 초기 미사용
+
 server:
   port: ${SERVER_PORT:8080}
