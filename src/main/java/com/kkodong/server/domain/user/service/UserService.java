@@ -7,12 +7,13 @@ import com.kkodong.server.domain.user.dto.UserResponse;
 import com.kkodong.server.domain.user.dto.PasswordChangeRequest;
 import com.kkodong.server.domain.user.dto.UpdateRequest;
 import com.kkodong.server.domain.user.repository.UserRepository;
+import com.kkodong.server.global.config.UserProperties;
 import com.kkodong.server.global.error.BusinessException;
 import com.kkodong.server.global.error.ErrorCode;
 
 import java.util.UUID;
 
-import com.kkodong.server.global.utill.Locations;
+import com.kkodong.server.global.util.Locations;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Point;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -27,6 +28,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final DogRepository dogRepository;
+    private final UserProperties userProperties;
 
     public UserResponse getMe(UUID userId) {
         User user = findUser(userId);
@@ -62,7 +64,11 @@ public class UserService {
 
         Point point = request.homeLocation() == null ? null : Locations.of(request.homeLocation().lat(), request.homeLocation().lng());
 
-        user.updateProfile(new UserProfileUpdate(request.displayName(), request.profileImageUrl(), point));
+        if (!userProperties.walkTimeSlot().areValidKeys(request.walkTimeSlots())) {
+            throw new BusinessException(ErrorCode.INVALID_WALK_TIME_SLOT);
+        }
+
+        user.updateProfile(new UserProfileUpdate(request.displayName(), request.profileImageUrl(), point, request.walkTimeSlots()));
         return UserResponse.from(user);
     }
 

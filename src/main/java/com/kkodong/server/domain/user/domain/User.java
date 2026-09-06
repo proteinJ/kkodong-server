@@ -2,10 +2,14 @@ package com.kkodong.server.domain.user.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -56,6 +60,11 @@ public class User {
     @Column(name = "home_location", columnDefinition = "geography(Point,4326)")
     private Point homeLocation; // nullable — 온보딩 전에는 미설정
 
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "walk_time_slots", nullable = false)
+    @Builder.Default
+    private List<String> walkTimeSlots = new ArrayList<>();
+
     public void updatePassword(String password) {
         this.password = password;
     }
@@ -67,6 +76,7 @@ public class User {
         if (req.displayName() != null) this.displayName = req.displayName();
         if (req.profileImageUrl() != null) this.profileImageUrl = req.profileImageUrl();
         if (req.homeLocation() != null) this.homeLocation = req.homeLocation();
+        if (req.walkTimeSlots() != null) this.walkTimeSlots = req.walkTimeSlots();
     }
 
     public void completeOnboarding() {

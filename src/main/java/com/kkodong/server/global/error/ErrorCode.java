@@ -27,6 +27,7 @@ public enum ErrorCode {
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "M004", "존재하지 않는 회원입니다."),
     INVALID_PASSWORD(HttpStatus.BAD_REQUEST, "M005", "비밀번호가 올바르지 않습니다."),
     ONBOARDING_REQUIREMENTS_NOT_MET(HttpStatus.BAD_REQUEST, "M006", "온보딩에 필요한 정보(닉네임·위치·반려견)가 모두 입력되지 않았습니다."),
+    INVALID_WALK_TIME_SLOT(HttpStatus.BAD_REQUEST, "M007", "산책 시간대 값이 올바르지 않습니다."),
 
     // Auth (인증 관련)
     AUTHENTICATION_FAILED(HttpStatus.UNAUTHORIZED, "A001", "인증에 실패하였습니다."),
@@ -44,13 +45,20 @@ public enum ErrorCode {
 
     // Safety (차단 B / 신고 R — 같은 safety 패키지지만 접두사는 기능 단위로 나눈다)
     SELF_BLOCK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "B001", "자기 자신은 차단할 수 없습니다."),
-
     SELF_REPORT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "R001", "자기 자신은 신고할 수 없습니다."),
     REPORT_TARGET_NOT_FOUND(HttpStatus.NOT_FOUND, "R002", "신고 대상을 찾을 수 없습니다."),
     DUPLICATE_REPORT(HttpStatus.CONFLICT, "R003", "이미 접수되어 처리 대기 중인 신고입니다."),
     INVALID_REPORT_REASON(HttpStatus.BAD_REQUEST, "R004", "유효하지 않은 신고 사유입니다."),
     INVALID_REPORT_TARGET_TYPE(HttpStatus.BAD_REQUEST, "R005", "유효하지 않은 신고 대상 유형입니다."),
-    UNSUPPORTED_REPORT_TARGET(HttpStatus.BAD_REQUEST, "R006", "아직 지원하지 않는 신고 대상입니다.");
+    UNSUPPORTED_REPORT_TARGET(HttpStatus.BAD_REQUEST, "R006", "아직 지원하지 않는 신고 대상입니다."),
+
+    // Friend (친구 관련)
+    // ⚠️ 산책 시간대는 추천의 선행조건이 아니다 — 미입력은 중립(0.5)으로 처리되며 불이익이 없다
+    //    (FRIEND_RECOMMENDATION_SPEC.md 2절 / API_SPEC.md 2.1 규약 6). 반면 자택 위치는
+    //    거리 계산의 기준점이라 없으면 추천 자체가 성립하지 않는다(같은 문서 규약 8).
+    NOT_FOUND_HOME_LOCATION(HttpStatus.BAD_REQUEST, "F001", "자택 위치를 먼저 등록해야 친구 추천을 받을 수 있습니다."),
+    DOG_NOT_OWNED(HttpStatus.FORBIDDEN, "F002", "본인의 반려견이 아닙니다.");
+
 
     private final HttpStatus httpStatus;
     private final String code;
