@@ -111,11 +111,8 @@ public class DogService {
      * <p>null은 그대로 통과시킨다 — PATCH에서 "변경하지 않음"을 뜻하기 때문.
      */
     private List<String> validateTraits(List<String> traits) {
-        if (traits == null) return null;
-        for (String trait : traits) {
-            if (!dogProperties.personality().isValidLabel(trait)) {
-                throw new BusinessException(ErrorCode.INVALID_PERSONALITY_TRAIT);
-            }
+        if (!dogProperties.personality().areValidLabels(traits)) {
+            throw new BusinessException(ErrorCode.INVALID_PERSONALITY_TRAIT);
         }
         return traits;
     }

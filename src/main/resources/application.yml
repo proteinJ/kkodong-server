@@ -114,6 +114,7 @@ kkodong:
       breed: 8
       gender: 0                   # 초기 미사용 — 어떤 조합이 더 나은지 근거가 없다
       neutered: 0                 # 초기 미사용
+    candidate-cap: 300
 
 server:
   port: ${SERVER_PORT:8080}

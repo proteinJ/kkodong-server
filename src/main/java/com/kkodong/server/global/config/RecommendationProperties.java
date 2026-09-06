@@ -10,6 +10,7 @@ import java.util.List;
 public record RecommendationProperties (
         int maxRadiusKm,
         List<Integer> radiusStepsKm,
+        int candidateCap, // 점수를 매길 후보를 몇 마리까지 끌어올 것 인가
         double neutralScore,
         int ageToleranceMonths,
         Weights weights

@@ -76,6 +76,7 @@ public class User {
         if (req.displayName() != null) this.displayName = req.displayName();
         if (req.profileImageUrl() != null) this.profileImageUrl = req.profileImageUrl();
         if (req.homeLocation() != null) this.homeLocation = req.homeLocation();
+        if (req.walkTimeSlots() != null) this.walkTimeSlots = req.walkTimeSlots();
     }
 
     public void completeOnboarding() {

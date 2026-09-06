@@ -1,4 +1,4 @@
-package com.kkodong.server.global.utill;
+package com.kkodong.server.global.util;
 
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -14,5 +14,13 @@ public class Locations {
 
     public static Point of(double lat, double lng) {
         return FACTORY.createPoint(new Coordinate(lng, lat)); // x: lng(경도), y: lat(위도)
+    }
+
+    public static Double latOf(Point p) {
+        return p.getY();
+    }
+
+    public static Double lngOf(Point p) {
+        return p.getX();
     }
 }
