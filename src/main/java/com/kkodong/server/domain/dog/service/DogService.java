@@ -34,11 +34,12 @@ public class DogService {
     @Transactional
     public DogResponse.detailInfo animalRegistration(UUID ownerId, DogRequest.registration request) {
         List<String> traits = validateTraits(request.personalityTraits());
+        String breed = validateBreed(request.breed());
 
         Dog dog = Dog.builder()
                 .ownerId(ownerId)
                 .name(request.name())
-                .breed(request.breed())
+                .breed(breed)
                 .birthDate(request.birthDate())
                 .gender(request.gender() != null ? Gender.valueOf(request.gender().toUpperCase()) : null)
                 .size(request.size() != null ? DogSize.valueOf(request.size().toUpperCase()) : null)
@@ -85,10 +86,11 @@ public class DogService {
     @Transactional
     public DogResponse.patch animalPatch(UUID userId, UUID dogId, DogRequest.patch request) {
         Dog dog = getDog(userId, dogId);
+        String breed = validateBreed(request.breed());
 
         dog.patch(new DogUpdate(
                 request.name(),
-                request.breed(),
+                breed,
                 request.birthDate(),
                 request.gender() != null ? Gender.valueOf(request.gender().toUpperCase()) : null,
                 request.size() != null ? DogSize.valueOf(request.size().toUpperCase()) : null,
@@ -115,6 +117,14 @@ public class DogService {
             throw new BusinessException(ErrorCode.INVALID_PERSONALITY_TRAIT);
         }
         return traits;
+    }
+
+    private String validateBreed(String breed) {
+        if (!dogProperties.breed().isValid(breed)) {
+            throw new BusinessException(ErrorCode.INVALID_BREED);
+        }
+
+        return breed;
     }
 
     /**
