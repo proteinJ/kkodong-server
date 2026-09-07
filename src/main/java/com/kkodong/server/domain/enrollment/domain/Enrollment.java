@@ -80,4 +80,52 @@ public class Enrollment {
     public boolean isReservable() {
         return status == EnrollmentStatus.ACTIVE;
     }
+
+    /**
+     * 특이사항 메모 수정(PN-11).
+     *
+     * <p>⚠️ 보호자에게 노출하지 않는다(4.데이터항목 비고). 견주 앱 응답 DTO에 이 값을
+     * 싣지 말 것 — "사람을 무서워함", "다른 개와 다툰 적 있음" 같은 내용이 들어간다.
+     */
+    public void updateMemo(String memo) {
+        this.staffMemo = memo;
+    }
+
+    /**
+     * 휴원(PN-11). 이용권은 살아 있지만 예약을 받지 않는다.
+     * 장기 여행·질병 등으로 잠시 쉬는 경우이며, 이용권 기간 연장(PN-12)과 함께 쓰인다.
+     */
+    public void pause() {
+        requireStatus(EnrollmentStatus.ACTIVE);
+        this.status = EnrollmentStatus.PAUSED;
+    }
+
+    /** 복원(PN-11). 휴원에서 재원으로 되돌린다. */
+    public void resume() {
+        requireStatus(EnrollmentStatus.PAUSED);
+        this.status = EnrollmentStatus.ACTIVE;
+    }
+
+    /**
+     * 퇴원(PN-11). 되돌릴 수 없다 — 다시 다니려면 신청부터 새로 한다.
+     *
+     * <p>행을 지우지 않는 이유: 이용권 발급·차감 이력과 출석 기록이 매달려 있고
+     * 그건 매출 데이터다. 재등록은 새 원생 행으로 처리한다
+     * (uq_enrollments_active_dog이 퇴원을 제외하는 이유).
+     */
+    public void withdraw() {
+        if (status == EnrollmentStatus.WITHDRAWN) {
+            throw new com.kkodong.server.global.error.BusinessException(
+                    com.kkodong.server.global.error.ErrorCode.INVALID_ENROLLMENT_STATUS);
+        }
+        this.status = EnrollmentStatus.WITHDRAWN;
+        this.withdrawnAt = OffsetDateTime.now();
+    }
+
+    private void requireStatus(EnrollmentStatus expected) {
+        if (this.status != expected) {
+            throw new com.kkodong.server.global.error.BusinessException(
+                    com.kkodong.server.global.error.ErrorCode.INVALID_ENROLLMENT_STATUS);
+        }
+    }
 }
