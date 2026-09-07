@@ -20,4 +20,11 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
 
     /** PN-08 출석 대시보드 — 오늘 이 매장의 전부. 점주 앱 첫 화면의 질의다. */
     List<Attendance> findAllByMerchantIdAndAttendanceDate(UUID merchantId, LocalDate attendanceDate);
+
+    /**
+     * PN-11 원생 상세의 등원 이력. 최근 20건만 준다 —
+     * 상세 화면은 "최근에 어떻게 다녔나"를 보는 곳이지 전체 이력을 뒤지는 곳이 아니다.
+     * 전체가 필요해지면 페이지네이션이 붙은 전용 API를 따로 낸다.
+     */
+    List<Attendance> findTop20ByEnrollmentIdOrderByAttendanceDateDesc(UUID enrollmentId);
 }
