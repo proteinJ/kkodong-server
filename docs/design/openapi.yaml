@@ -63,6 +63,10 @@ tags:
   - name: Auth
   - name: Profile
   - name: Dogs
+  - name: Meta
+    description: >
+      클라이언트 선택지(견종·성향 태그·산책 시간대). 앱에 하드코딩하면 항목 하나
+      고치는 데 앱 심사를 다시 받아야 하므로 서버가 내려준다.
   - name: Friends
     description: ★ v3 핵심 — 강아지 친구 추천/신청/목록 (FRIEND-1/2/3)
   - name: Chat & Appointments
@@ -169,6 +173,76 @@ components:
           properties:
             success: { type: boolean, example: false }
             data: { type: object, nullable: true, example: null }
+
+    # ---------------- 선택지 메타 (GET /meta) ----------------
+    MetaData:
+      type: object
+      description: >
+        형태가 셋 다 다른 것은 의도한 것이다. 성향 태그는 키가 곧 저장값이라 문자열
+        배열이고, 시간대는 키가 계약이고 값이 표시용이라 {key, display} 다.
+        견종은 94종이라 평면 배열이면 선택 화면이 스크롤 지옥이므로 그룹이 섹션
+        헤더 역할을 한다.
+      properties:
+        dogBreeds: { $ref: "#/components/schemas/BreedOptions" }
+        personalityTraits: { $ref: "#/components/schemas/TraitOptions" }
+        walkTimeSlots: { $ref: "#/components/schemas/TimeSlotOptions" }
+
+    BreedOptions:
+      type: object
+      properties:
+        maxSelectable:
+          type: integer
+          example: 1
+          description: >
+            설정값이 아니라 상수다. 개수 제한은 DTO @Size 와 DB CHECK 가 담당하고,
+            여기서는 클라이언트가 "최대 N개" UI 를 그릴 수 있게 알려주기만 한다.
+        groups:
+          type: array
+          description: >
+            ⚠️ 배열 순서가 곧 선택 화면의 섹션 순서다. small_companion 이 국내 등록의
+            대다수라 맨 앞이다. 설정 파일 작성 순서가 그대로 응답 순서가 된다.
+          items: { $ref: "#/components/schemas/BreedGroup" }
+
+    BreedGroup:
+      type: object
+      properties:
+        key: { type: string, example: "small_companion" }
+        display: { type: string, example: "소형 반려견", description: 선택 화면의 섹션 제목 }
+        breeds:
+          type: array
+          items: { type: string }
+          example: ["말티즈", "푸들", "말티푸", "포메라니안"]
+
+    TraitOptions:
+      type: object
+      properties:
+        maxSelectable: { type: integer, example: 3 }
+        traits:
+          type: array
+          description: >
+            키가 곧 저장값이라 문자열 배열이다. 서버가 이유 문장을 조립할 때 쓰는
+            stem/adnominal 은 내부 값이라 응답에 포함하지 않는다 — 실으면 계약이
+            되어 문장 템플릿을 바꿀 수 없게 된다.
+          items: { type: string }
+          example: ["활발함", "차분함", "사교적", "낯가림", "겁많음", "장난꾸러기", "독립적", "애교많음"]
+
+    TimeSlotOptions:
+      type: object
+      properties:
+        maxSelectable: { type: integer, example: 3 }
+        slots:
+          type: array
+          items: { $ref: "#/components/schemas/TimeSlot" }
+
+    TimeSlot:
+      type: object
+      description: 키가 API·DB 계약이고 값은 표시용이다. 저장되는 것은 key 다.
+      properties:
+        key:
+          type: string
+          enum: [dawn, morning, noon, afternoon, evening, night]
+          example: evening
+        display: { type: string, example: "저녁" }
 
     Coordinate:
       type: object
@@ -405,7 +479,14 @@ components:
         (`IllegalArgumentException` 미핸들링 — 서버 미해결 항목).
       properties:
         name: { type: string }
-        breed: { type: string }
+        breed:
+          type: string
+          example: 말티즈
+          description: >
+            ⚠️ 자유 입력이 아니다. `GET /meta` 가 내려주는 목록에서 고른 값만 허용하며,
+            목록 밖이면 400 `D005`. 등록(POST)과 수정(PATCH) 양쪽에서 검증한다 —
+            등록만 막으면 수정으로 우회된다. `dogs.breed` 는 자유 텍스트 컬럼이라
+            DB 제약이 없어 서버 검증이 유일한 방어선이다. 목록에 없는 견종은 `기타`.
         birthDate: { type: string, format: date }
         gender: { type: string, enum: [male, female] }
         size: { type: string, enum: [small, medium, large] }
@@ -424,7 +505,14 @@ components:
         (`Dog.patch`). 그래서 DogCreate 를 재사용하지 않는다.
       properties:
         name: { type: string }
-        breed: { type: string }
+        breed:
+          type: string
+          example: 말티즈
+          description: >
+            ⚠️ 자유 입력이 아니다. `GET /meta` 가 내려주는 목록에서 고른 값만 허용하며,
+            목록 밖이면 400 `D005`. 등록(POST)과 수정(PATCH) 양쪽에서 검증한다 —
+            등록만 막으면 수정으로 우회된다. `dogs.breed` 는 자유 텍스트 컬럼이라
+            DB 제약이 없어 서버 검증이 유일한 방어선이다. 목록에 없는 견종은 `기타`.
         birthDate: { type: string, format: date }
         gender: { type: string, enum: [male, female] }
         size: { type: string, enum: [small, medium, large] }
@@ -1184,6 +1272,39 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ApiError" }
         "401": { $ref: "#/components/responses/Unauthorized" }
+
+  # ============================================================
+  # Meta — 클라이언트 선택지
+  # ============================================================
+  /meta:
+    get:
+      tags: [Meta]
+      summary: 선택지 조회 (견종·성향 태그·산책 시간대)
+      description: >
+        DB를 읽지 않고 설정값만 조립해 내려준다. 클라이언트가 목록을 하드코딩하면
+        항목 하나 고치는 데 앱 심사를 다시 받아야 하므로 서버가 제공한다.
+        셋으로 나누지 않은 이유: 한 화면(ONBOARD-3)에서 셋을 다 쓰는데 나누면
+        부분 실패 시 화면을 어떻게 그릴지 클라이언트가 정해야 하고, 전부 합쳐도 2KB다.
+
+
+        ⚠️ 클라이언트는 폴백 사본을 번들해 둘 것 — 온보딩 중 네트워크가 끊기면
+        선택지가 비어 가입 자체가 막힌다.
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/ApiResponse"
+                  - type: object
+                    properties:
+                      data: { $ref: "#/components/schemas/MetaData" }
+        "401":
+          description: 인증 실패(A001) 또는 토큰 만료(A002)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ApiError" }
 
   # ============================================================
   # Dogs (PET-1)

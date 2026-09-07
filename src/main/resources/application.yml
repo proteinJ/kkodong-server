@@ -2,6 +2,11 @@ spring:
   application:
     name: kkodong-server
 
+  # 견종 목록은 94종이라 여기 두면 나머지 설정이 묻힌다. 별도 파일로 뺐지만
+  # 바인딩 경로(kkodong.dog.breed.*)는 한 파일에 있을 때와 동일하다.
+  config:
+    import: classpath:config/breed-groups.yml
+
   datasource:
     # Supabase Postgres 연결 문자열로 교체 필요 (Supabase 대시보드 > Settings > Database)
     url: ${DB_URL:jdbc:postgresql://localhost:5432/kkodong}

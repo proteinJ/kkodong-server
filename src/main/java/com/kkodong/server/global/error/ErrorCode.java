@@ -42,6 +42,9 @@ public enum ErrorCode {
     IMAGE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "D002", "이미지 업로드에 실패했습니다."),
     DOG_NOT_FOUND(HttpStatus.NOT_FOUND, "D003", "존재하지 않는 반려견입니다."),
     INVALID_PERSONALITY_TRAIT(HttpStatus.BAD_REQUEST, "D004", "유효하지 않은 성향 태그입니다."),
+    // 견종은 자유 입력이 아니라 GET /meta 가 내려주는 목록에서 고르게 한다
+    // (설정: kkodong.dog.breed.groups). DB에 제약이 없으므로 이 검증이 유일한 방어선이다.
+    INVALID_BREED(HttpStatus.BAD_REQUEST, "D005", "유효하지 않은 견종입니다."),
 
     // Safety (차단 B / 신고 R — 같은 safety 패키지지만 접두사는 기능 단위로 나눈다)
     SELF_BLOCK_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "B001", "자기 자신은 차단할 수 없습니다."),

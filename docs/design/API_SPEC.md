@@ -145,7 +145,77 @@ Redis에 저장, 로그아웃 시 AT는 Redis 블랙리스트 등록.**
 
 ---
 
+## 0.5 선택지 메타 (`GET /meta`)
+
+| 동작 | 메서드/경로 | 상세 |
+|---|---|---|
+| 선택지 조회 | `GET /api/v1/meta` | 견종·성향 태그·산책 시간대. 인증 필요 |
+
+**왜 서버가 내려주는가**: 클라이언트가 목록을 하드코딩하면 항목 하나 고치는 데
+**앱 심사를 다시 받아야 한다**. 성향 태그는 "의미가 겹치는 태그가 있으면 8개를 7개로
+줄인다"는 검증 계획이 이미 있어(`RECOMMENDATION.md` 1절) 바뀔 것이 전제다.
+
+**응답**
+
+```jsonc
+{
+  "dogBreeds": {
+    "maxSelectable": 1,
+    "groups": [
+      { "key": "small_companion", "display": "소형 반려견",
+        "breeds": ["말티즈", "푸들", "말티푸", "포메라니안", ...] },
+      { "key": "terrier",  "display": "테리어",     "breeds": [...] },
+      { "key": "sporting", "display": "사냥·스포팅", "breeds": [...] },
+      { "key": "herding",  "display": "목축·사역",   "breeds": [...] },
+      { "key": "korean",   "display": "한국 견종",   "breeds": [...] },
+      { "key": "mixed",    "display": "믹스",       "breeds": ["믹스"] },
+      { "key": "etc",      "display": "기타",       "breeds": ["기타"] }
+    ]
+  },
+  "personalityTraits": {
+    "maxSelectable": 3,
+    "traits": ["활발함", "차분함", "사교적", "낯가림", "겁많음", "장난꾸러기", "독립적", "애교많음"]
+  },
+  "walkTimeSlots": {
+    "maxSelectable": 3,
+    "slots": [
+      { "key": "dawn", "display": "새벽" }, { "key": "morning",   "display": "아침" },
+      { "key": "noon", "display": "낮" },   { "key": "afternoon", "display": "오후" },
+      { "key": "evening", "display": "저녁" }, { "key": "night",  "display": "밤" }
+    ]
+  }
+}
+```
+
+**계약 규약**
+
+1. **형태가 셋 다 다른 것은 의도한 것이다.** 성향 태그는 **키가 곧 저장값**이라 문자열
+   배열이고(`활발함`을 그대로 저장), 시간대는 **키가 계약이고 값은 표시용**이라
+   `{key, display}`다(`evening` 저장, "저녁" 표시). 견종은 94종이라 평면 배열이면
+   선택 화면이 스크롤 지옥이 되므로 그룹이 섹션 헤더 역할을 한다
+2. **`groups` 배열 순서가 곧 선택 화면의 섹션 순서다.** `small_companion` 이 국내 등록의
+   대다수라 맨 앞이다. 설정 파일 작성 순서가 그대로 응답 순서가 되며,
+   `PropertiesBindingTest` 가 `containsExactly` 로 순서를 고정한다
+3. **성향 태그의 `stem`/`adnominal` 을 응답에 넣지 않는다.** 서버가 추천 이유 문장을
+   조립할 때만 쓰는 내부 값이다(`RECOMMENDATION.md` 5절). 응답에 실으면 계약이 되어
+   문장 템플릿을 바꿀 수 없게 된다
+4. **`maxSelectable` 은 설정값이 아니라 상수다.** 개수 제한은 DTO `@Size` 와 DB CHECK
+   제약이 담당하고(바꾸려면 어차피 마이그레이션이 필요하다), 여기서는 클라이언트가
+   "최대 N개" UI 를 그릴 수 있게 알려주기만 한다
+5. 목록의 출처는 `kkodong.dog.breed.groups`(별도 파일 `config/breed-groups.yml`),
+   `kkodong.dog.personality.tags`, `kkodong.user.walk-time-slot.slots` 다
+
+⚠️ **클라이언트는 폴백 사본을 번들해 둘 것.** 온보딩 중 네트워크가 끊기면 선택지가
+비어 가입 자체가 막힌다.
+
+---
+
 ## 1. 반려견 프로필 (PET-1)
+
+⚠️ **`breed` 는 자유 입력이 아니다.** `GET /meta` 가 내려주는 목록에서 고른 값만
+허용하며, 목록에 없으면 400 `D005` 다. 등록(`POST`)과 수정(`PATCH`) 양쪽에서 검증한다 —
+등록만 막으면 수정으로 우회된다. `dogs.breed` 는 자유 텍스트 컬럼이라 DB 제약이 없고
+**서버 검증이 유일한 방어선**이다. 목록에 없는 견종은 `기타` 로 받는다.
 
 | 동작 | 메서드/경로 | 상세 |
 |---|---|---|
@@ -627,6 +697,7 @@ FRIEND/CHAT보다 먼저 만든 이유가 이것이므로, 빠뜨리면 순서�
 | `D002` | 500 | 이미지 업로드 실패 |
 | `D003` | 404 | 존재하지 않는 반려견 |
 | `D004` | 400 | 유효하지 않은 성향 태그 |
+| `D005` | 400 | 유효하지 않은 견종 (`GET /meta` 목록 밖) |
 | `B001` | 400 | 자기 자신 차단 불가 |
 | `R001` | 400 | 자기 자신 신고 불가 |
 | `R002` | 404 | 신고 대상 없음 |
