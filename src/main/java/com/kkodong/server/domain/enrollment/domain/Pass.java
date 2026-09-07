@@ -112,6 +112,79 @@ public class Pass {
     }
 
     /**
+     * 기간 연장(PN-12). 회차는 건드리지 않는다.
+     *
+     * <p>기준점을 "오늘"이 아니라 <b>기존 만료일</b>로 잡는다 — 만료 전에 미리 연장했을 때
+     * 남은 기간을 깎아먹지 않게 하려는 것이다. 이미 만료된 뒤라면 오늘부터 센다.
+     *
+     * <p>만료로 닫혔던 이용권은 다시 열린다. 회차까지 소진됐다면 EXHAUSTED로 남는다 —
+     * 기간이 늘어도 쓸 회차가 없으면 사용할 수 없기 때문이다.
+     */
+    public void extend(int days, LocalDate today) {
+        if (status == PassStatus.REFUNDED) {
+            throw new BusinessException(ErrorCode.PASS_ALREADY_CLOSED);
+        }
+        LocalDate base = (expiresOn == null || expiresOn.isBefore(today)) ? today : expiresOn;
+        this.expiresOn = base.plusDays(days);
+
+        if (status == PassStatus.EXPIRED) {
+            boolean hasCount = productType != ProductType.COUNT
+                    || (remainingCount != null && remainingCount > 0);
+            this.status = hasCount ? PassStatus.ACTIVE : PassStatus.EXHAUSTED;
+        }
+    }
+
+    /**
+     * 환불(PN-12). 되돌릴 수 없는 종료 상태다.
+     *
+     * <p>⚠️ 회차를 0으로 떨어뜨린다. 남겨두면 환불된 이용권으로 등원이 되어
+     * 매출과 장부가 어긋난다.
+     *
+     * @return 환불 처리 직전의 잔여 회차. 원장에 남길 변동량 계산에 쓴다
+     */
+    public Integer refund() {
+        if (status == PassStatus.REFUNDED) {
+            throw new BusinessException(ErrorCode.PASS_ALREADY_CLOSED);
+        }
+        Integer before = remainingCount;
+        this.status = PassStatus.REFUNDED;
+        if (productType == ProductType.COUNT) {
+            this.remainingCount = 0;
+        }
+        return before;
+    }
+
+    /**
+     * 수동 조정(PN-12). 착오 입력이나 서비스 회차 제공 등 예외 상황용이다.
+     *
+     * <p>⚠️ 일상적으로 쓰라고 만든 것이 아니다. 모든 조정은 사유와 처리자가 원장에
+     * 남으며(FR-PN12-01) 그것이 분쟁 대응의 근거가 된다.
+     *
+     * @param delta 증감량. 음수면 차감
+     * @return 조정 후 잔여
+     */
+    public Integer adjust(int delta) {
+        if (status == PassStatus.REFUNDED) {
+            throw new BusinessException(ErrorCode.PASS_ALREADY_CLOSED);
+        }
+        if (productType != ProductType.COUNT) {
+            throw new BusinessException(ErrorCode.INVALID_PASS_ADJUSTMENT);
+        }
+        int next = (remainingCount == null ? 0 : remainingCount) + delta;
+        if (next < 0) {
+            throw new BusinessException(ErrorCode.INVALID_PASS_ADJUSTMENT);
+        }
+        this.remainingCount = next;
+        // 잔여 유무에 따라 상태를 맞춰 둔다 — 조정 직후 조회가 어긋난 상태를 보지 않게.
+        if (next == 0 && status == PassStatus.ACTIVE) {
+            this.status = PassStatus.EXHAUSTED;
+        } else if (next > 0 && status == PassStatus.EXHAUSTED) {
+            this.status = PassStatus.ACTIVE;
+        }
+        return next;
+    }
+
+    /**
      * 되돌리기·취소에 따른 1회 복원(FR-PN09-04).
      *
      * <p>소진되어 EXHAUSTED가 됐던 이용권은 다시 ACTIVE로 돌아온다 — 만료가 아니라
