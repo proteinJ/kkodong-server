@@ -85,6 +85,82 @@ public class Attendance {
     private OffsetDateTime updatedAt;
 
     /**
+     * 등원 확정(PN-09, FR-PN09-03).
+     *
+     * <p>⚠️ 이용권 차감과 반드시 같은 트랜잭션 안에 있어야 한다. 하나라도 밖에 있으면
+     * "등원은 됐는데 회차가 안 깎인" 행이 남고, 그건 조회로 찾아낼 방법이 없다.
+     * 그래서 차감 결과(passId·passLedgerId)를 인자로 받는다 — 차감 없이 등원만
+     * 시키는 호출을 만들기 어렵게 하려는 것이다.
+     *
+     * @param passLedgerId 기간권이면 null(차감할 회차가 없다)
+     */
+    public void checkIn(UUID actorUserId, UUID passId, UUID passLedgerId) {
+        if (status != AttendanceStatus.SCHEDULED) {
+            throw new com.kkodong.server.global.error.BusinessException(
+                    com.kkodong.server.global.error.ErrorCode.INVALID_ATTENDANCE_STATUS);
+        }
+        this.status = AttendanceStatus.ATTENDED;
+        this.checkedInAt = OffsetDateTime.now();
+        this.checkedInByUserId = actorUserId;
+        this.passId = passId;
+        this.passLedgerId = passLedgerId;
+    }
+
+    /**
+     * 하원 처리(PN-09).
+     *
+     * <p>등원하지 않았으면 하원할 수 없다 — DB의 {@code chk_attendances_checkin_status}와
+     * 같은 규칙을 서버에서 먼저 본다.
+     */
+    public void checkOut(UUID actorUserId) {
+        if (status != AttendanceStatus.ATTENDED || checkedInAt == null) {
+            throw new com.kkodong.server.global.error.BusinessException(
+                    com.kkodong.server.global.error.ErrorCode.INVALID_ATTENDANCE_STATUS);
+        }
+        this.checkedOutAt = OffsetDateTime.now();
+        this.checkedOutByUserId = actorUserId;
+    }
+
+    /**
+     * 등원 되돌리기(FR-PN09-04). 오처리를 취소하고 등원 예정 상태로 되돌린다.
+     *
+     * <p>⚠️ 이용권 복원과 같은 트랜잭션이어야 한다. 되돌렸는데 회차가 안 돌아오면
+     * 견주는 오지도 않은 날의 회차를 잃는다.
+     *
+     * <p>행을 지우지 않고 {@code revertedAt}을 남기는 이유: 되돌린 이력 자체가
+     * 분쟁 대응의 근거다. "원래 등원 처리됐다가 취소된 것"과 "처음부터 없던 것"은 다르다.
+     */
+    public void revert(UUID actorUserId) {
+        if (status != AttendanceStatus.ATTENDED) {
+            throw new com.kkodong.server.global.error.BusinessException(
+                    com.kkodong.server.global.error.ErrorCode.INVALID_ATTENDANCE_STATUS);
+        }
+        this.status = AttendanceStatus.SCHEDULED;
+        this.checkedInAt = null;
+        this.checkedInByUserId = null;
+        this.checkedOutAt = null;
+        this.checkedOutByUserId = null;
+        this.passId = null;
+        this.passLedgerId = null;
+        this.revertedAt = OffsetDateTime.now();
+        this.revertedByUserId = actorUserId;
+    }
+
+    /** 결석 처리(PN-08). 예정이었는데 오지 않은 경우다. 이용권은 차감하지 않는다. */
+    public void markAbsent() {
+        if (status != AttendanceStatus.SCHEDULED) {
+            throw new com.kkodong.server.global.error.BusinessException(
+                    com.kkodong.server.global.error.ErrorCode.INVALID_ATTENDANCE_STATUS);
+        }
+        this.status = AttendanceStatus.ABSENT;
+    }
+
+    /** 하원까지 마쳤는지. 대시보드 집계에서 등원 중과 하원 완료를 가른다. */
+    public boolean isCheckedOut() {
+        return checkedOutAt != null;
+    }
+
+    /**
      * 예약 취소에 따라 등원 예정을 함께 접는다.
      *
      * <p>이미 등원한 뒤라면 건드리지 않는다 — 온 사실과 차감된 회차를 되돌리는 것은

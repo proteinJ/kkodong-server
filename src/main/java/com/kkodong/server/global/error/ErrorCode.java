@@ -90,7 +90,17 @@ public enum ErrorCode {
     INVALID_RESERVATION_PERIOD(HttpStatus.BAD_REQUEST, "RV006", "예약 종료 시각은 시작 시각보다 뒤여야 합니다."),
 
     ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EN001", "존재하지 않는 원생입니다."),
-    ENROLLMENT_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "EN002", "재원 중인 원생이 아닙니다.");
+    ENROLLMENT_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "EN002", "재원 중인 원생이 아닙니다."),
+
+    // Attendance (출석 AT / 이용권 PA)
+    ATTENDANCE_NOT_FOUND(HttpStatus.NOT_FOUND, "AT001", "존재하지 않는 등원 기록입니다."),
+    INVALID_ATTENDANCE_STATUS(HttpStatus.BAD_REQUEST, "AT002", "현재 등원 상태에서 할 수 없는 작업입니다."),
+
+    // FR-PN09-02 — 만료·잔여 0인 원생은 출석 대상에서 제외된다. 등원 처리까지 왔다면
+    // 화면이 낡은 것이므로, 차감 없이 등원시키지 않고 여기서 막는다.
+    NO_USABLE_PASS(HttpStatus.BAD_REQUEST, "PA001", "사용 가능한 이용권이 없습니다. 이용권을 먼저 발급하거나 연장해 주세요."),
+    PASS_NOT_FOUND(HttpStatus.NOT_FOUND, "PA002", "존재하지 않는 이용권입니다."),
+    PASS_NOT_USABLE(HttpStatus.BAD_REQUEST, "PA003", "만료되었거나 잔여 회차가 없는 이용권입니다.");
 
 
     private final HttpStatus httpStatus;
