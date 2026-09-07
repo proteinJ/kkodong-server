@@ -103,7 +103,16 @@ public enum ErrorCode {
     PASS_NOT_USABLE(HttpStatus.BAD_REQUEST, "PA003", "만료되었거나 잔여 회차가 없는 이용권입니다."),
     PASS_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "PA004", "이미 환불되었거나 종료된 이용권입니다."),
     // 회차를 남기고 환불하면 그 회차로 등원이 되어 매출과 장부가 어긋난다.
-    INVALID_PASS_ADJUSTMENT(HttpStatus.BAD_REQUEST, "PA005", "조정 후 잔여 회차가 0보다 작을 수 없습니다.");
+    INVALID_PASS_ADJUSTMENT(HttpStatus.BAD_REQUEST, "PA005", "조정 후 잔여 회차가 0보다 작을 수 없습니다."),
+
+    // Application (등원 신청 AP) — 신청서 제출은 견주 앱(KG-06/07) 몫이고,
+    // 점주 앱은 양식 등록(PN-06)과 접수·승인(PN-07)을 맡는다.
+    APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "AP001", "존재하지 않는 등원 신청입니다."),
+    APPLICATION_ALREADY_REVIEWED(HttpStatus.BAD_REQUEST, "AP002", "이미 처리된 신청입니다."),
+    // 승인은 원생을 만드는 행위라, 이미 재원 중인 강아지를 또 승인하면 원생이 둘로 갈린다.
+    ALREADY_ENROLLED(HttpStatus.CONFLICT, "AP003", "이미 재원 중인 반려견입니다."),
+    APPLICATION_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "AP004", "활성화된 신청서 양식이 없습니다."),
+    CONSENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "AP005", "활성화된 서약서가 없습니다.");
 
 
     private final HttpStatus httpStatus;
