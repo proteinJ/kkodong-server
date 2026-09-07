@@ -60,7 +60,25 @@ public enum ErrorCode {
     //    (FRIEND_RECOMMENDATION_SPEC.md 2절 / API_SPEC.md 2.1 규약 6). 반면 자택 위치는
     //    거리 계산의 기준점이라 없으면 추천 자체가 성립하지 않는다(같은 문서 규약 8).
     NOT_FOUND_HOME_LOCATION(HttpStatus.BAD_REQUEST, "F001", "자택 위치를 먼저 등록해야 친구 추천을 받을 수 있습니다."),
-    DOG_NOT_OWNED(HttpStatus.FORBIDDEN, "F002", "본인의 반려견이 아닙니다.");
+    DOG_NOT_OWNED(HttpStatus.FORBIDDEN, "F002", "본인의 반려견이 아닙니다."),
+
+    // Partner (꼬동 파트너 — 매장 P / 스태프 PS)
+    // ⚠️ PC-12 — Supabase RLS를 쓰지 않으므로 소속·권한 검증은 전부 Service 계층 몫이다.
+    //    아래 P003/P004가 그 검증에서 나오는 코드이며, 점주 API의 기본 방어선이다.
+    MERCHANT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "존재하지 않는 매장입니다."),
+    DUPLICATE_BUSINESS_REGISTRATION(HttpStatus.CONFLICT, "P002", "이미 등록된 사업자등록번호입니다."),
+    BUSINESS_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "P003", "사업자등록번호 진위확인에 실패했습니다."),
+    MERCHANT_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "P004", "존재하지 않는 이용권 상품입니다."),
+    INVALID_PRODUCT_SHAPE(HttpStatus.BAD_REQUEST, "P005", "횟수권은 총 회차가, 기간권은 유효기간이 필요합니다."),
+    INVITE_NOT_USABLE(HttpStatus.BAD_REQUEST, "P006", "폐기되었거나 만료된 초대 코드입니다."),
+
+    NOT_MERCHANT_STAFF(HttpStatus.FORBIDDEN, "PS001", "해당 매장의 스태프가 아닙니다."),
+    MERCHANT_PERMISSION_DENIED(HttpStatus.FORBIDDEN, "PS002", "이 작업을 수행할 권한이 없습니다."),
+    STAFF_NOT_FOUND(HttpStatus.NOT_FOUND, "PS003", "존재하지 않는 스태프입니다."),
+    ALREADY_MERCHANT_STAFF(HttpStatus.CONFLICT, "PS004", "이미 해당 매장에 소속 신청했거나 소속된 계정입니다."),
+    // 마지막 원장이 나가면 매장을 관리할 사람이 없어져 매장이 잠긴다.
+    // 행 단위 제약으로 표현할 수 없어 Service 계층에서 센다.
+    LAST_DIRECTOR_CANNOT_RESIGN(HttpStatus.BAD_REQUEST, "PS005", "매장의 마지막 원장은 퇴사 처리할 수 없습니다.");
 
 
     private final HttpStatus httpStatus;
