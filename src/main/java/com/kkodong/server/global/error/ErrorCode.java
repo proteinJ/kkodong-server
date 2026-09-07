@@ -75,7 +75,22 @@ public enum ErrorCode {
     ALREADY_MERCHANT_STAFF(HttpStatus.CONFLICT, "PS004", "이미 해당 매장에 소속 신청했거나 소속된 계정입니다."),
     // 마지막 원장이 나가면 매장을 관리할 사람이 없어져 매장이 잠긴다.
     // 행 단위 제약으로 표현할 수 없어 Service 계층에서 센다.
-    LAST_DIRECTOR_CANNOT_RESIGN(HttpStatus.BAD_REQUEST, "PS005", "매장의 마지막 원장은 퇴사 처리할 수 없습니다.");
+    LAST_DIRECTOR_CANNOT_RESIGN(HttpStatus.BAD_REQUEST, "PS005", "매장의 마지막 원장은 퇴사 처리할 수 없습니다."),
+
+    // Reservation (예약 RV / 원생 EN)
+    RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "RV001", "존재하지 않는 예약입니다."),
+    // 승인된 예약을 또 승인하는 등, 현재 상태에서 불가능한 전이를 요청한 경우.
+    // 상태머신은 Reservation.transition 계열 메서드가 강제한다.
+    INVALID_RESERVATION_STATUS(HttpStatus.BAD_REQUEST, "RV002", "현재 예약 상태에서 할 수 없는 작업입니다."),
+    DUPLICATE_RESERVATION(HttpStatus.CONFLICT, "RV003", "같은 날짜에 이미 예약이 있습니다."),
+    // ⚠️ 정원 상한은 DB 제약으로 표현할 수 없어(카운트 상한) 승인 트랜잭션에서
+    //    (매장, 날짜) advisory lock 을 잡고 직접 센다 — MerchantDayLock 참조.
+    DAILY_CAPACITY_EXCEEDED(HttpStatus.CONFLICT, "RV004", "해당 날짜의 정원이 가득 찼습니다."),
+    RESERVATION_ENROLLMENT_REQUIRED(HttpStatus.BAD_REQUEST, "RV005", "유치원 예약은 원생만 신청할 수 있습니다."),
+    INVALID_RESERVATION_PERIOD(HttpStatus.BAD_REQUEST, "RV006", "예약 종료 시각은 시작 시각보다 뒤여야 합니다."),
+
+    ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "EN001", "존재하지 않는 원생입니다."),
+    ENROLLMENT_NOT_ACTIVE(HttpStatus.BAD_REQUEST, "EN002", "재원 중인 원생이 아닙니다.");
 
 
     private final HttpStatus httpStatus;
