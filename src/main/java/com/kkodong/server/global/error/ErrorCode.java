@@ -80,6 +80,10 @@ public enum ErrorCode {
     MERCHANT_PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "P004", "존재하지 않는 이용권 상품입니다."),
     INVALID_PRODUCT_SHAPE(HttpStatus.BAD_REQUEST, "P005", "횟수권은 총 회차가, 기간권은 유효기간이 필요합니다."),
     INVITE_NOT_USABLE(HttpStatus.BAD_REQUEST, "P006", "폐기되었거나 만료된 초대 코드입니다."),
+    // 국세청 진위확인은 번호·대표자명·개업일 세 값을 함께 대조한다 — 개업일 없이는 확인 자체가 안 된다.
+    BUSINESS_OPENED_ON_REQUIRED(HttpStatus.BAD_REQUEST, "P007", "사업자 진위확인에는 개업일이 필요합니다."),
+    // ⚠️ 확인 불가를 통과로 다루지 않는다. 국세청 API가 잠깐 죽은 사이에 아무 번호나 등록되면 안 된다.
+    BUSINESS_VERIFICATION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "P008", "사업자 진위확인 서비스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요."),
 
     NOT_MERCHANT_STAFF(HttpStatus.FORBIDDEN, "PS001", "해당 매장의 스태프가 아닙니다."),
     MERCHANT_PERMISSION_DENIED(HttpStatus.FORBIDDEN, "PS002", "이 작업을 수행할 권한이 없습니다."),
