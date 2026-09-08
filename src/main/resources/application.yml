@@ -49,8 +49,10 @@ jwt:
   refresh-token-validity-in-milliseconds: ${JWT_RT_VALIDITY:604800000}  # 7일
 
 apple:
-  # iOS 앱의 Bundle Identifier. identity_token의 aud claim과 일치해야 검증 통과
-  bundle-id: ${APPLE_BUNDLE_ID:}
+  # iOS 앱의 Bundle Identifier. identity_token의 aud claim과 일치해야 검증 통과.
+  # 비밀값이 아니라 앱 식별자라 개발 기본값을 둔다 — 비워두면 aud("")가 되어 모든 토큰이 A006으로 떨어진다.
+  # 운영에서는 APPLE_BUNDLE_ID로 덮어쓴다.
+  bundle-id: ${APPLE_BUNDLE_ID:com.kkodong.app}
 
 # ============================================================
 # 도메인 설정 — 값 목록은 전부 여기서 관리한다
