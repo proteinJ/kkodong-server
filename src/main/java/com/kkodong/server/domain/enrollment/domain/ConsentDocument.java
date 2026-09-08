@@ -29,6 +29,15 @@ import java.util.UUID;
 @Table(name = "consent_documents")
 public class ConsentDocument {
 
+    /**
+     * 촬영·공개 동의 항목의 키(PC-29).
+     *
+     * <p>사진을 커뮤니티로 내보낼 수 있는지(F-16) 판단하는 근거이며, 서버 여러 곳에서
+     * 대조하므로 상수로 고정한다 — 오타는 "동의하지 않음"으로 조용히 해석되어
+     * 사진이 영영 공유되지 않거나, 반대로 동의 없이 공유되는 사고가 된다.
+     */
+    public static final String ITEM_PHOTO_PUBLIC = "photo_public";
+
     @Id
     @GeneratedValue
     private UUID id;

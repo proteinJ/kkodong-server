@@ -121,7 +121,18 @@ public enum ErrorCode {
     // 이미 보호자가 읽었을 수 있는 내용을 조용히 바꾸지 않는다.
     DAILY_NOTE_ALREADY_SENT(HttpStatus.BAD_REQUEST, "DN002", "이미 발송된 알림장은 수정할 수 없습니다."),
     NOTE_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "DN003", "존재하지 않는 알림장 템플릿입니다."),
-    DAILY_NOTE_EMPTY(HttpStatus.BAD_REQUEST, "DN004", "알림장 내용이 비어 있습니다.");
+    DAILY_NOTE_EMPTY(HttpStatus.BAD_REQUEST, "DN004", "알림장 내용이 비어 있습니다."),
+
+    // Media (유치원 사진·영상 MD)
+    // ⚠️ PC-23 — 미디어 보관 비용이 "고정비 0" 원칙과 충돌하는 유일한 기능이다.
+    //    상한은 설정값(kkodong.media)이며 UD-C 결정 전까지 잠정치다.
+    INVALID_MEDIA_FILE(HttpStatus.BAD_REQUEST, "MD001", "지원하지 않는 파일 형식입니다."),
+    MEDIA_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "MD002", "허용된 용량을 초과했습니다."),
+    // 서버가 리사이즈하지 않고 거부하는 이유는 MediaStorageService 주석 참조.
+    MEDIA_RESOLUTION_TOO_HIGH(HttpStatus.BAD_REQUEST, "MD003", "허용된 해상도를 초과했습니다. 앱에서 크기를 줄여 다시 올려 주세요."),
+    MEDIA_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MD004", "미디어 업로드에 실패했습니다."),
+    MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "MD005", "존재하지 않는 미디어입니다."),
+    TOO_MANY_MEDIA_FILES(HttpStatus.BAD_REQUEST, "MD006", "한 번에 올릴 수 있는 파일 수를 초과했습니다.");
 
 
     private final HttpStatus httpStatus;
