@@ -126,7 +126,14 @@ public enum ErrorCode {
     APPLICATION_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "AP004", "활성화된 신청서 양식이 없습니다."),
     CONSENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "AP005", "활성화된 서약서가 없습니다."),
     // 퇴원한 원생을 다시 휴원시키는 등, 현재 상태에서 불가능한 전이를 요청한 경우.
-    INVALID_ENROLLMENT_STATUS(HttpStatus.BAD_REQUEST, "EN003", "현재 원생 상태에서 할 수 없는 작업입니다.");
+    INVALID_ENROLLMENT_STATUS(HttpStatus.BAD_REQUEST, "EN003", "현재 원생 상태에서 할 수 없는 작업입니다."),
+
+    // DailyNote (알림장 DN)
+    DAILY_NOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "DN001", "존재하지 않는 알림장입니다."),
+    // 이미 보호자가 읽었을 수 있는 내용을 조용히 바꾸지 않는다.
+    DAILY_NOTE_ALREADY_SENT(HttpStatus.BAD_REQUEST, "DN002", "이미 발송된 알림장은 수정할 수 없습니다."),
+    NOTE_TEMPLATE_NOT_FOUND(HttpStatus.NOT_FOUND, "DN003", "존재하지 않는 알림장 템플릿입니다."),
+    DAILY_NOTE_EMPTY(HttpStatus.BAD_REQUEST, "DN004", "알림장 내용이 비어 있습니다.");
 
 
     private final HttpStatus httpStatus;
