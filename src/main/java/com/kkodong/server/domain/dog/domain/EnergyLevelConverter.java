@@ -1,18 +1,11 @@
 package com.kkodong.server.domain.dog.domain;
 
-import jakarta.persistence.AttributeConverter;
+import com.kkodong.server.global.common.LowercaseEnumConverter;
 import jakarta.persistence.Converter;
 
 @Converter(autoApply = true)
-public class EnergyLevelConverter implements AttributeConverter<EnergyLevel, String> {
-
-    @Override
-    public String convertToDatabaseColumn(EnergyLevel attribute) {
-        return attribute == null ? null : attribute.name().toLowerCase();
-    }
-
-    @Override
-    public EnergyLevel convertToEntityAttribute(String dbData) {
-        return dbData == null ? null : EnergyLevel.valueOf(dbData.toUpperCase());
+public class EnergyLevelConverter extends LowercaseEnumConverter<EnergyLevel> {
+    public EnergyLevelConverter() {
+        super(EnergyLevel.class);
     }
 }

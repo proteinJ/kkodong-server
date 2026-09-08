@@ -1,6 +1,6 @@
 package com.kkodong.server.domain.dog.domain;
 
-import jakarta.persistence.AttributeConverter;
+import com.kkodong.server.global.common.LowercaseEnumConverter;
 import jakarta.persistence.Converter;
 
 /**
@@ -8,15 +8,8 @@ import jakarta.persistence.Converter;
  * 자동으로 안 맞는다. 저장 시 소문자로, 조회 시 대문자로 변환.
  */
 @Converter(autoApply = true)
-public class GenderConverter implements AttributeConverter<Gender, String> {
-
-    @Override
-    public String convertToDatabaseColumn(Gender attribute) {
-        return attribute == null ? null : attribute.name().toLowerCase();
-    }
-
-    @Override
-    public Gender convertToEntityAttribute(String dbData) {
-        return dbData == null ? null : Gender.valueOf(dbData.toUpperCase());
+public class GenderConverter extends LowercaseEnumConverter<Gender> {
+    public GenderConverter() {
+        super(Gender.class);
     }
 }

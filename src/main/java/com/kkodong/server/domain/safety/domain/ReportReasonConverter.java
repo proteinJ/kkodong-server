@@ -1,17 +1,11 @@
 package com.kkodong.server.domain.safety.domain;
 
-import jakarta.persistence.AttributeConverter;
+import com.kkodong.server.global.common.LowercaseEnumConverter;
 import jakarta.persistence.Converter;
 
 @Converter(autoApply = true)
-public class ReportReasonConverter implements AttributeConverter<ReportReason, String> {
-    @Override
-    public String convertToDatabaseColumn(ReportReason attribute) {
-        return attribute == null ? null : attribute.name().toLowerCase();
-    }
-
-    @Override
-    public ReportReason convertToEntityAttribute(String dbData) {
-        return dbData == null ? null : ReportReason.valueOf(dbData.toUpperCase());
+public class ReportReasonConverter extends LowercaseEnumConverter<ReportReason> {
+    public ReportReasonConverter() {
+        super(ReportReason.class);
     }
 }
