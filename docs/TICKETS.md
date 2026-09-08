@@ -20,37 +20,16 @@ FRIEND/WALK/COMMUNITY 계열 신설).
 
 ---
 
-## 구현 현황 (2026-09-07 기준)
+## 구현 현황
 
-**서버(`kkodong-server/`)만 진행 중 — iOS 클라이언트는 아직 기본 Xcode 템플릿 상태
-(`ContentView.swift`/`PawWalkApp.swift`뿐)라 화면/네트워킹 레이어 착수 전.**
+**진행 상태의 정본은 [GitHub 이슈](https://github.com/proteinJ/kkodong-server/issues)다.**
+한눈에 보는 표는 [`STATUS.md`](STATUS.md)에 있고, 그 파일은 이슈에서 자동 생성된다.
+이 문서는 티켓의 **정의·근거·주의사항**만 담는다 — 여기에 상태를 적지 않는다.
+
+작업 방식·브랜치·PR 규칙은 [`CONTRIBUTING.md`](CONTRIBUTING.md)를 먼저 읽을 것.
 
 > 구현과 명세가 어긋나 있는 항목은 [`design/API_SPEC.md`](design/API_SPEC.md)의
 > **"미해결: 구현이 명세와 어긋나는 항목"** 절에 모아 뒀다.
->
-> ✅ **2026-09-07 정정** — "온보딩 완료 API가 산책 시간대를 필수로 요구한다"고
-> 적혀 있었으나 사실이 아니었다. `UserService.onboarding`은 닉네임·자택 위치·반려견
-> 보유만 검증한다. `UserResponse`의 `walkTimeSlots` 누락도 함께 해소됐다.
-
-| 티켓 | 상태 | 비고 |
-|---|---|---|
-| FOUNDATION-1 (회원가입/로그인) | 🟡 거의 완료 | 이메일 가입/로그인/토큰갱신/로그아웃, `/auth/apple`, 프로필 조회·수정, 비밀번호 변경, 회원탈퇴, 온보딩 완료 처리, `/users/*` 리네임까지 구현. **잔여**: 온보딩 선행조건에서 산책 시간대 제거, 프로필 응답에 `walkTimeSlots` 추가, 탈퇴 시 Redis RT 즉시 폐기 |
-| FOUNDATION-2 (탭 내비게이션) | ⬜ 미착수 | iOS 클라이언트 작업. **v3에서 탭 구성 변경** — 아래 티켓 본문 참조 |
-| ONBOARD-1 (안전 고지) | ⬜ 미착수 | 클라이언트 작업 |
-| ONBOARD-2 (지역 게이팅) | 🟠 **보류** | **v3에서 필요성 재검토 중(TICKETS.md Q8)** — 반경 자동 확장이 "후보 0" 문제를 흡수하므로 Q8 결정 전까지 착수하지 않는다 |
-| ONBOARD-3 (누끼 생성) | ⬜ 미착수 | **v3 신설.** Vision 온디바이스 + 업로드 |
-| PET-1 (반려견 프로필) | 🟢 완료 | 등록/목록/상세/수정/삭제/사진업로드(Cloudflare R2). v3 확장(`personality_traits`·`cutout_image_url`·`weight_kg`) 완료 |
-| PET-2 (케어 D-day 알림) | ⬜ 미착수 | **v3에서 `vaccination_records` → `care_records`로 확장**(심장사상충·구충·건강검진 포함) |
-| **FRIEND-1 (추천 피드)** | 🟡 **후보 조회까지** | **v3 신설, 최우선 핵심.** `GET /friends/recommendations`가 반경 내 강아지를 가까운 순으로 내려준다. 아래 잔여 작업 참조 |
-| FRIEND-2/3 (신청·수락·목록) | ⬜ 미착수 | `V5` 스키마만 적용. `FriendRequest` 엔티티조차 없어 FRIEND-1의 `requestStatus`가 `"none"` 고정이다 |
-| CHAT-1/2 (채팅·산책 약속) | ⬜ 미착수 | STOMP WebSocket 미착수 |
-| WALK-1/2/3 (산책·배변·경로) | ⬜ 미착수 | `walk_sessions` 도메인 없음 |
-| CARD-1/2 (완료 카드) | ⬜ 미착수 | 날씨 API 선정 미조사(design/API_SPEC.md 미확정 항목) |
-| COMMUNITY-1/2 (커뮤니티) | ⬜ 미착수 | **v3 신설** |
-| SAFETY-1/2 (차단/신고) | 🟢 완료 | 차단 CRUD·신고 접수 구현, `V4__add_reports.sql` 적용 (2026-08-27). ⚠️ 신고 대상은 `user`만(커뮤니티는 COMMUNITY-1 이후). ⚠️ **차단이 다른 기능에 미치는 영향은 각 도메인 착수 시 직접 넣어야 한다** — 현재는 차단 레코드 적재뿐 |
-| **MEET-1 (운영자 산책 모임)** | ⬜ 미착수 | **v3.1 신설 — 코드 0줄, 베타 오픈 즉시.** 콜드스타트에서 유일하게 작동 |
-| **MEET-2 (만난 강아지 상호 확인)** | ⬜ 미착수 | **v3.1 신설.** WALK·CARD 이후 |
-| PASS-1 (패스권 결제) | ⬜ 미착수 | StoreKit 2 |
 
 ### 권장 착수 순서
 
