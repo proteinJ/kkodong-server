@@ -41,3 +41,9 @@ out/
 .env.local
 !.env.example
 .DS_Store
+
+# Claude Code 개인 설정 — 커밋 금지 (CONTRIBUTING.md 5절)
+.claude/settings.local.json
+
+# Excel 잠금 파일
+~$*.xlsx
