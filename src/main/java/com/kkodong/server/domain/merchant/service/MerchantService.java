@@ -5,7 +5,9 @@ import com.kkodong.server.domain.merchant.dto.MerchantRequest;
 import com.kkodong.server.domain.merchant.dto.MerchantResponse;
 import com.kkodong.server.domain.merchant.repository.*;
 import com.kkodong.server.global.error.BusinessException;
+import com.kkodong.server.global.config.BusinessVerificationProperties;
 import com.kkodong.server.global.error.ErrorCode;
+import com.kkodong.server.global.external.NtsBusinessVerifier;
 import com.kkodong.server.global.util.Locations;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,6 +35,8 @@ public class MerchantService {
     private final MerchantProductRepository merchantProductRepository;
     private final MerchantInviteRepository merchantInviteRepository;
     private final MerchantAccessGuard accessGuard;
+    private final NtsBusinessVerifier businessVerifier;
+    private final BusinessVerificationProperties verificationProperties;
 
     private static final SecureRandom RANDOM = new SecureRandom();
 
@@ -43,9 +47,13 @@ public class MerchantService {
      * 원장이 안 붙으면 아무도 접근할 수 없는 매장이 남고, 사업자등록번호가 UNIQUE라
      * 같은 번호로 다시 만들 수도 없다 — 손으로 고쳐야 하는 상태가 된다.
      *
-     * <p>TODO(FR-PN02-01): 국세청 진위확인 API 연동. 지금은 형식 검증만 하고 통과시킨다.
-     *   연동 전까지 verify()를 호출하므로 매장이 즉시 ACTIVE가 된다 — 실제 출시 전에
-     *   반드시 검증 단계를 끼워 넣을 것.
+     * <p><b>진위확인(FR-PN02-01)</b>: 사업자등록번호·대표자명·개업일이 국세청 기록과 모두
+     * 일치해야 매장이 ACTIVE가 된다. 번호만 맞으면 남의 사업자번호로 매장을 열 수 있으므로
+     * 세 값을 함께 대조한다.
+     *
+     * <p>⚠️ 확인할 수 없을 때(API 장애·타임아웃) 통과시키지 않는다 — 그렇게 하면 국세청 API가
+     * 잠깐 죽은 사이에 아무 번호나 등록된다. 진위확인이 꺼져 있으면(로컬·테스트) 매장은
+     * 검증되지 않은 PENDING으로 남는다. 통과시킨 척하지 않는 것이 요점이다.
      */
     @Transactional
     public MerchantResponse.detailInfo create(UUID userId, MerchantRequest.create request) {
@@ -61,7 +69,10 @@ public class MerchantService {
                 .businessOpenedOn(request.businessOpenedOn())
                 .build());
 
-        merchant.verify(); // TODO: 진위확인 성공 시에만 호출하도록 바꿀 것
+        if (verifyBusiness(request) == NtsBusinessVerifier.Result.VALID_BUSINESS) {
+            merchant.verify();
+        }
+        // 그 외에는 PENDING으로 남는다 — 견주 앱(KG-01)은 ACTIVE만 노출하므로 안전하다.
 
         merchantStaffRepository.save(MerchantStaff.builder()
                 .merchantId(merchant.getId())
@@ -235,6 +246,37 @@ public class MerchantService {
             throw new BusinessException(ErrorCode.INVITE_NOT_USABLE);
         }
         invite.revoke();
+    }
+
+    /**
+     * 진위확인을 수행하고 결과를 돌려준다. 불일치·호출불가는 예외로 가입을 막는다.
+     *
+     * <p>⚠️ 개업일은 진위확인의 <b>필수 입력</b>이다(국세청 API가 세 값을 함께 대조한다).
+     * 검증이 켜져 있는데 개업일이 없으면 애초에 확인이 불가능하므로 여기서 막는다 —
+     * DTO에서 무조건 필수로 두지 않은 이유는 검증이 꺼진 환경에서는 필요 없기 때문이다.
+     */
+    private NtsBusinessVerifier.Result verifyBusiness(MerchantRequest.create request) {
+        if (!verificationProperties.enabled()) {
+            return NtsBusinessVerifier.Result.DISABLED;
+        }
+        if (request.businessOpenedOn() == null) {
+            throw new BusinessException(ErrorCode.BUSINESS_OPENED_ON_REQUIRED);
+        }
+
+        NtsBusinessVerifier.Result result = businessVerifier.verify(
+                request.businessRegistrationNumber(),
+                request.representativeName(),
+                request.businessOpenedOn());
+
+        return switch (result) {
+            case VALID_BUSINESS -> result;
+            case MISMATCH -> throw new BusinessException(ErrorCode.BUSINESS_VERIFICATION_FAILED);
+            // 확인 불가를 통과로 다루지 않는다. 점주에게는 "잠시 후 다시" 안내가 나가고,
+            // 매장은 만들어지지 않는다 — 사업자등록번호가 UNIQUE라 반쯤 만들어두면
+            // 재시도조차 막힌다.
+            case UNAVAILABLE -> throw new BusinessException(ErrorCode.BUSINESS_VERIFICATION_UNAVAILABLE);
+            case DISABLED -> result;
+        };
     }
 
     private Merchant findMerchant(UUID merchantId) {
