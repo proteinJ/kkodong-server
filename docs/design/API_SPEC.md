@@ -360,6 +360,22 @@ score = 30 × distance_score
 | 친구 상세 | `GET /api/v1/friendships/{friendshipId}` | |
 | 친구 끊기 | `DELETE /api/v1/friendships/{friendshipId}` | 양쪽 모두 가능. 채팅·약속 비활성화 |
 
+**응답 모양** (`GET /friendships`, 화면: 채팅 탭 목록):
+```json
+[{
+  "id": "...",
+  "owner": { "id": "...", "displayName": "몽이집사" },
+  "dogs": [ /* 2.1의 dog와 같은 모양. 다견 가구면 여럿 */ ],
+  "lastMessage": { "content": "내일 어때요?", "createdAt": "2026-09-09T08:00:00Z" },
+  "unreadCount": 2,
+  "walkedTogetherCount": 3
+}]
+```
+- `dogs`가 **배열인 이유**: friendship은 견주 쌍에 유일한데 상대가 다견 가구일 수 있다.
+  앱은 첫 마리 이름으로 방 제목을 짓고 "몽이 외 1"로 줄인다
+- `lastMessage`는 대화가 없으면 `null` — 빈 문자열로 채우면 "메시지가 있는데 내용이 빈" 상태와
+  구분되지 않는다
+
 ---
 
 ## 3. 채팅 & 산책 약속 (CHAT-1, CHAT-2) — Spring WebSocket(STOMP)
@@ -377,6 +393,16 @@ score = 30 × distance_score
   (`user_a_id`/`user_b_id`)인지, **차단 관계가 아닌지**(SAFETY-1) 확인 후 거부/허용.
   RLS가 없으므로 직접 작성해야 한다
 
+**응답 모양** (`GET /friendships/{id}/messages`):
+```json
+{ "items": [{ "id": "...", "senderId": "...", "content": "안녕하세요",
+              "createdAt": "2026-09-09T08:00:00Z", "isMine": false }],
+  "nextCursor": "..." }
+```
+- **`isMine`은 서버가 판정한다.** 클라이언트가 자기 `userId`를 들고 `senderId`와 비교하게 두면
+  토큰 교체·다중 기기에서 말풍선이 반대로 그려진다
+- `items`는 **최신순**이다. 앱이 뒤집어 그린다(아래가 최신)
+
 ### 3.2 산책 약속 (v3 신설)
 
 | 동작 | 메서드/경로 | 상세 |
@@ -393,6 +419,16 @@ score = 30 × distance_score
 노출한다 — "처음 만나는 친구라면 안전한 장소에서, 목줄을 유지한 채 짧게 인사부터
 시작해보세요"(../TICKETS.md Q3). 서버는 첫 약속 여부 판단용으로 해당 friendship의
 과거 `completed` 약속 존재 여부를 응답에 포함한다.
+
+**응답 모양** (`GET /walk-appointments`, `POST /walk-appointments`):
+```json
+{ "id": "...", "friendshipId": "...", "scheduledAt": "2026-09-10T18:00:00Z",
+  "placeName": "경의선숲길 입구", "lat": null, "lng": null,
+  "status": "proposed", "isProposer": false, "isFirstWithFriend": true }
+```
+- `isProposer`가 있어야 앱이 **제안자에게 응답 버튼을 숨긴다**(제안자 본인은 응답 불가, 400)
+- `isFirstWithFriend`가 안전 넛지의 유일한 판단 근거다 — 이게 없으면 매번 띄우거나 아예 못 띄운다
+- `status`는 소문자. 앱은 모르는 값을 `unknown`으로 떨어뜨리고 버튼을 잠근다
 
 ---
 
@@ -446,6 +482,34 @@ score = 30 × distance_score
 > **동네 인기 산책로 추천은 Phase 2다** — 이 절에 API 없음. 밀도가 필요한 기능이고
 > 활성화 임계치·궤적 프라이버시 처리가 미정(../TICKETS.md Q9).
 
+### 5.4 응답 모양
+
+```json
+{ "id": "...", "dogId": "...", "dogName": "초코",
+  "startedAt": "2026-09-09T09:00:00Z", "endedAt": "2026-09-09T09:42:30Z",
+  "distanceMeters": 2480, "poopCount": 1, "peeCount": 3,
+  "route": [{ "lat": 37.55, "lng": 126.92, "ts": "2026-09-09T09:00:05Z" }],
+  "weatherCondition": null, "weatherTempCelsius": null }
+```
+
+- **`endedAt: null`이 "진행 중"이다.** 별도 status를 두지 않는다 —
+  "끝났는데 진행 중" 같은 불가능한 조합이 표현 가능해진다.
+  앱은 진행 중이면 경과 시간을 현재 시각 기준으로 계산한다
+- **목록 응답에는 `route`를 넣지 않는다**(`null`). 궤적은 한 번 산책에 수백 점이라
+  목록마다 내려보내면 응답이 폭발한다. 앱도 상세에서 다시 받는다
+- `poopCount`/`peeCount`는 비정규화 집계다. 배변 API와 **같은 트랜잭션**에서 증감한다
+- 목록은 `{ "items": [...], "nextCursor": "..." }`
+
+**배변 일괄 전송이 선택이 아닌 이유**: 앱은 산책 중 배변을 **로컬 큐에만 쌓고 종료 시 한 번에**
+보낸다. 산책 중 네트워크가 끊기는 건 예외가 아니라 정상이고, 한 건씩 보내면 끊긴 구간이
+그대로 유실된다. `POST .../bathroom-logs`는 **배열 body**를 받아야 하고, 각 원소의
+`clientLogId`(클라이언트 생성 UUID)로 **중복 INSERT를 막아야 한다** —
+재전송으로 카운트가 두 번 오르면 그 산책 기록은 되돌릴 방법이 없다.
+
+**앱은 서버 실패로 산책을 끊지 않는다**: 시작 요청이 실패해도 걷기는 계속되고,
+종료 시점에 세션을 만들어 완료까지 한 번에 보낸다(`startedAt`은 실제 출발 시각).
+그래서 **`POST /walk-sessions`에 과거 `startedAt`이 들어올 수 있다** — 거부하지 말 것.
+
 ---
 
 ## 6. 산책 완료 카드 (CARD-1, CARD-2)
@@ -488,6 +552,28 @@ score = 30 × distance_score
 
 **집계 컬럼**: `like_count`/`comment_count`는 비정규화 — 목록 조회 시 COUNT 서브쿼리를
 돌리지 않는다. 증감은 좋아요/댓글 API와 같은 트랜잭션에서.
+
+**응답 모양** (`GET /community/posts`):
+```json
+{ "items": [{
+    "id": "...", "title": null, "content": "오늘 연남동 산책하다 만난 아이",
+    "imageUrls": ["https://..."],
+    "author": { "id": "...", "displayName": "몽이집사", "profileImageUrl": null,
+                "areaName": "연남동", "isFriend": true },
+    "likeCount": 3, "commentCount": 1, "liked": false,
+    "createdAt": "2026-09-09T08:30:00Z", "isMine": false
+  }], "nextCursor": "..." }
+```
+
+- **`liked`가 없으면 하트를 채울지 말지 알 수 없다.** 앱은 하트를 먼저 칠하고 실패 시 되돌리므로
+  초기값이 반드시 필요하다
+- **`isMine`도 서버가 판정한다** — 삭제 버튼 노출 근거다. 클라이언트가 유저 ID를 비교하지 않는다
+- **`author.isFriend`·`author.areaName`은 정렬 근거를 화면에 보여주기 위한 것**이다.
+  동네·친구 우선 정렬이 이 커뮤니티의 유일한 차별점인데(CONCEPT 3.4),
+  화면에 아무 표시가 없으면 사용자에게는 그냥 최신순으로 보인다
+
+댓글(`GET .../comments`)은 **평면 배열**로 내려준다. `parentCommentId`가 있으면 대댓글이고,
+앱은 **한 단계까지만** 들여쓴다 — 깊이가 늘면 좁은 화면에서 읽을 수 없다.
 
 ---
 
@@ -656,6 +742,266 @@ FRIEND/CHAT보다 먼저 만든 이유가 이것이므로, 빠뜨리면 순서�
 상호 일치율이 친구 신청 수락률(FRIEND-2)보다 유의하게 높은지가 이 설계의 성패 판정 기준이다.
 
 ---
+
+## 13. 견주 유치원 — 알림장 (KG-09/10/11) 🟠 서버 미구현
+
+> **읽는 쪽만 있다.** 알림장을 쓰는 것은 점주 앱(`PN-14`, `/api/v1/partner/...`)이고,
+> 견주는 발송된 것을 읽기만 한다. 점주 엔드포인트를 견주 토큰으로 부르면 403이므로
+> 두 경로를 섞지 않는다.
+>
+> **진입 경로는 마이 탭이다**(`UD-A` 부분 결정, 2026-09-09).
+> 유치원을 *찾는* 화면(`C-01`~`C-04`)은 지도, *다니는* 화면(`C-09`~`C-15`)은 마이 하위다.
+> 재원 중인 사람만 쓰는 화면이라 탭으로 빼면 대부분의 사용자에게 평생 빈 탭이 하나 는다.
+>
+> **iOS는 이 계약대로 이미 구현돼 있다**(`Features/Kindergarten/`). 서버가 붙으면
+> 그대로 동작하고, 필드명이 어긋나면 화면이 통째로 빈다. 바꿔야 하면 이슈에서 먼저 합의할 것.
+
+| 동작 | 메서드/경로 | 화면 |
+|---|---|---|
+| 내 유치원 목록 | `GET /api/v1/kindergartens/my` | 마이 탭 섹션 |
+| 유치원 홈 | `GET /api/v1/kindergartens/enrollments/{enrollmentId}` | `C-09` |
+| 알림장 목록 | `GET /api/v1/kindergartens/enrollments/{enrollmentId}/daily-notes?cursor=&limit=20` | `C-10` |
+| 알림장 상세 | `GET /api/v1/kindergartens/daily-notes/{noteId}` | `C-11` |
+| 활동 앨범 | `GET /api/v1/kindergartens/enrollments/{enrollmentId}/photos?cursor=` | `C-12` |
+| 읽음 처리 | `POST /api/v1/kindergartens/daily-notes/{noteId}/read` | `C-11` |
+
+### 13.1 공통 규칙
+
+- **`DRAFT`는 절대 내보내지 않는다.** 견주 응답은 `status = SENT`만 담는다.
+  쓰다 만 알림장이 새면 그 자체로 CS다("우리 아이만 내용이 없어요").
+- **권한은 `enrollment.dogId → dog.ownerId == 로그인 유저`로 판정한다.**
+  `enrollmentId`는 점주 화면에도 노출되는 값이라 아는 것만으로는 권한이 되지 않는다.
+- **enum은 소문자로 내보낸다** — `EnumFormat.lower()`. `status`, `todayAttendance.status` 모두.
+  iOS는 모르는 값을 `unknown`으로 떨어뜨리므로 값이 늘어도 화면이 깨지진 않지만, 그 항목은 "-"로 나온다.
+- **날짜는 `LocalDate` 문자열**(`"2026-09-09"`), 시각은 `"09:12"`처럼 **매장 시간대로 잘라서** 보낸다.
+  iOS 디코더가 기본 전략이라 ISO 문자열을 `Date`로 못 읽는다 — 전부 문자열로 받는다.
+
+### 13.2 `GET /kindergartens/my`
+
+퇴원(`withdrawn`)한 곳은 서버가 뺀다. 다견 가구는 **강아지 수만큼** 행이 나온다 —
+알림장이 아이별로 오기 때문이다.
+
+```json
+[{
+  "enrollmentId": "...", "merchantId": "...", "merchantName": "댕댕유치원 성수점",
+  "dogId": "...", "dogName": "초코", "dogImageUrl": "https://...",
+  "status": "active",
+  "unreadNoteCount": 2
+}]
+```
+
+`unreadNoteCount`는 `status = SENT AND read_at IS NULL`의 개수다. 마이 탭 배지가 이 값 하나로 그려진다.
+
+### 13.3 `GET /kindergartens/enrollments/{enrollmentId}` (C-09)
+
+```json
+{
+  "enrollmentId": "...", "merchantName": "댕댕유치원 성수점", "dogName": "초코",
+  "status": "active",
+  "todayAttendance": { "status": "attended", "checkedInAt": "09:12", "checkedOutAt": null },
+  "passes": [{
+    "id": "...", "productName": "10회권",
+    "remainingCount": 2, "totalCount": 10,
+    "expiresOn": "2026-09-15", "daysUntilExpiry": 6
+  }],
+  "recentNotes": [{
+    "id": "...", "noteDate": "2026-09-09", "preview": "친구들이랑 공놀이 신나게 했어요",
+    "thumbnailUrl": "https://...", "photoCount": 3, "readAt": null
+  }]
+}
+```
+
+- **`todayAttendance`가 `null`이면 "오늘은 등원하지 않는 날"이다.** `SCHEDULED`("등원 전")와 다르다.
+  둘을 합치면 안 가는 날이 결석처럼 읽힌다.
+- **하원은 상태가 아니다.** `checkedOutAt`이 채워진 것으로 판단한다(점주 쪽 `AttendanceStatus`와 동일).
+- `passes`는 **기간권이면 `remainingCount`·`totalCount`가 `null`**이다. iOS는 이걸 "기간권"으로 그린다.
+- `daysUntilExpiry`는 무기한이면 `null`, 이미 지났으면 음수. 회차 2 이하 또는 7일 이내면 강조된다.
+- `recentNotes`는 **3건**(FR-C09-03).
+
+### 13.4 `GET .../daily-notes` (C-10)
+
+```json
+{ "items": [ /* recentNotes와 같은 모양 */ ], "nextCursor": "..." }
+```
+
+날짜 역순, 커서 페이징. `preview`는 서버가 `activity`(비면 다음 항목)를 잘라서 준다 —
+클라이언트가 자르면 아이템마다 길이가 달라진다.
+
+**검색·필터 파라미터**(`FR-C10-01`) — iOS는 이미 이걸 보내고 있다:
+
+| 파라미터 | 값 | 뜻 |
+|---|---|---|
+| `keyword` | 문자열 | 알림장 내용 부분 일치. **빈 값이면 아예 보내지 않는다** — 서버가 `keyword=`를 "빈 문자열 검색"으로 읽으면 결과가 0이 된다 |
+| `from` | `2026-08-10` | 이 날짜 이후만. 앱은 1주/1개월/3개월 칩을 이 값으로 바꿔 보낸다 |
+| `unreadOnly` | `true` | 안 읽은 것만. 매일 쌓이는 목록이라 제일 자주 쓰는 필터다 |
+
+세 조건은 **AND**로 묶는다. 조건에 안 걸린 경우와 애초에 알림장이 없는 경우를 앱이
+다른 문구로 안내하므로, 빈 결과에 에러를 내지 말고 `items: []`를 그대로 줄 것.
+
+### 13.5 `GET /kindergartens/daily-notes/{noteId}` (C-11)
+
+```json
+{
+  "id": "...", "enrollmentId": "...", "dogName": "초코", "merchantName": "댕댕유치원 성수점",
+  "noteDate": "2026-09-09",
+  "content": {
+    "activity": "공놀이", "meal": "사료 한 그릇 완식",
+    "bathroom": null, "condition": "아주 좋음", "remark": null
+  },
+  "photos": [{ "id": "...", "url": "https://...", "thumbnailUrl": "https://...",
+               "noteDate": null, "noteId": null }],
+  "sentAt": "2026-09-09T09:40:00Z", "readAt": null
+}
+```
+
+- `content`는 점주 쪽 `NoteContent` **그대로**다(다섯 항목, 순서 포함). 새 항목을 여기서 늘리지 말 것 —
+  늘리려면 점주 작성 화면부터 늘어야 한다.
+- **선생님이 안 쓴 칸은 `null`로 보낸다.** 빈 문자열이나 `"없음"`으로 채우지 않는다 —
+  iOS는 빈 항목을 아예 그리지 않는데, `"없음"`이 오면 "배변: 없음"이 화면에 박힌다.
+
+### 13.6 `GET .../photos` (C-12 활동 앨범)
+
+알림장에 붙은 사진만 **최신순**으로 모아 준다. 발송된(`SENT`) 알림장의 사진만이다.
+
+```json
+{ "items": [{ "id": "...", "url": "https://...", "thumbnailUrl": "https://...",
+              "noteDate": "2026-09-09", "noteId": "..." }],
+  "nextCursor": "..." }
+```
+
+- **앨범에서는 `noteDate`가 필수다.** 앱이 날짜로 묶어 헤더를 붙인다 —
+  사진만 늘어놓으면 언제 찍힌 건지 알 수 없다.
+  (알림장 상세 안의 `photos`에서는 `null`이어도 된다)
+- `noteId`는 사진에서 원본 알림장으로 건너가는 통로다.
+- **같은 날 사진은 연속으로 내려줄 것.** 앱은 페이지 경계에서 같은 날이면 이어 붙이는데,
+  날짜가 섞여 오면 "9월 9일" 헤더가 화면에 두 번 나온다.
+
+### 13.7 `POST .../read`
+
+`read_at`을 처음 한 번만 채운다(이미 있으면 그대로 둔다 — 점주가 보는 "읽은 시각"이 뒤로 밀리면 안 된다).
+응답 본문은 없다. iOS는 실패해도 삼킨다 — 사용자가 할 수 있는 일이 없고, 다음에 열면 다시 시도된다.
+
+### 13.8 아직 계약에 없는 것
+
+| 화면 | 기능 | 상태 |
+|---|---|---|
+| `C-05` | 코드/QR로 유치원 연결 | 미착수. **이게 없으면 위 API가 전부 빈 목록이다** |
+| `C-11` | 커뮤니티 내보내기(`FR-C11-03`) | 미착수 |
+| `C-13` | 이용권 차감 이력 | 점주 쪽 `pass_ledger`는 있다. 견주용 엔드포인트만 없다 |
+| `C-14` | 통합 타임라인 | 미착수 |
+| `C-15` | 알림 센터 | 미착수 |
+
+**iOS는 이미 끝났다**: 알림장 목록(검색·기간·안읽음 필터, 월 그룹), 상세(앞뒤 이동,
+사진 뷰어·기기 저장 `FR-C11-02`), 활동 앨범(`C-12`), 이용권 상세(`C-13` 요약분).
+서버만 붙으면 동작한다.
+
+## 14. 지도 — 강아지 동반 매장 탐색 (MAP-01/02) 🟠 서버 미구현
+
+> **iOS는 이 계약대로 이미 구현돼 있다**(`Features/Places/`). 산책 탭 안에서 토글로
+> 지도 모드가 열리고, 검색바·업종 필터·핀·매장 카드·상세 시트가 전부 동작한다.
+> 서버가 아래 두 엔드포인트만 그대로 만들면 붙는다. **필드명이 어긋나면 화면이 통째로 빈다.**
+>
+> 데이터 출처는 **기존 `merchants` 테이블**이다. 새 테이블이 필요 없다 —
+> 점주 앱(`PN-01~05`)이 채워 넣는 그 행을 견주에게 읽기 전용으로 여는 것이다.
+
+| 동작 | 메서드/경로 | 화면 |
+|---|---|---|
+| 주변 매장 목록 | `GET /api/v1/places?lat=&lng=&radiusKm=&categories=&keyword=` | 지도 핀 + 카드 |
+| 매장 상세 | `GET /api/v1/places/{placeId}` | 상세 시트 (`MAP-02`) |
+
+둘 다 **인증 필요**하다 — `friendDogCount`(친구 재원 정보)가 요청자가 누구인지 알아야 계산된다.
+
+### 14.1 노출 규칙 — 이걸 어기면 사고가 난다
+
+- **`status = 'ACTIVE'` 인 매장만 내보낸다.** `PENDING`은 사업자 진위확인 전이라
+  견주 앱에 뜨면 안 되고(`MerchantStatus` 주석), `SUSPENDED`·`CLOSED`도 제외한다.
+  단 **행을 지우지는 않는다** — 과거 예약·이용권 이력이 매달려 있다.
+- **업종은 `MerchantType` 그대로**: `kindergarten` / `grooming` / `clinic`.
+  ⚠️ **`cafe`는 없다.** 넣으려면 `merchants.merchant_type` CHECK 마이그레이션 +
+  전용 프로필 테이블이 필요하다(`MerchantType` 주석의 "의도된 마찰"). 제품 결정이 먼저다.
+  iOS에는 `cafe` 자리만 있고 **필터 칩에는 넣지 않았다** — 항상 0건인 필터가 되기 때문이다.
+- enum은 **소문자**로 내보낸다(`EnumFormat.lower()`). 앱은 모르는 값을 `unknown`으로
+  떨어뜨려 회색 핀으로 그리므로 값이 늘어도 화면은 안 깨지지만, 그 핀은 "기타"가 된다.
+
+### 14.2 `GET /places` (MAP-01)
+
+**쿼리 파라미터**
+
+| 이름 | 필수 | 값 | 뜻 |
+|---|---|---|---|
+| `lat` `lng` | ✅ | `37.5605` | 내 현재 위치. 앱이 1회성 위치 조회로 넣는다 |
+| `radiusKm` | | 기본 `3` | 반경 |
+| `categories` | | `kindergarten,grooming` | 쉼표 구분. **비어 있으면 전 업종** |
+| `keyword` | | `미용` | 상호 부분 일치 |
+| `cursor` | | | 페이징 |
+
+- **`categories`와 `keyword`는 값이 없으면 앱이 아예 안 보낸다.** 서버도 빈 문자열을
+  "아무것도 아닌 것 검색"으로 읽으면 안 된다 — 결과가 0이 되어 지도가 통째로 빈다.
+- 반경 조회는 PostGIS `ST_DWithin(location, :point, :meters)`. `merchants.location`이
+  이미 `Point`라 인덱스만 있으면 된다.
+
+**응답**
+
+```json
+{ "items": [{
+    "id": "...", "name": "댕댕유치원 성수점", "category": "kindergarten",
+    "lat": 37.5637, "lng": 126.9237,
+    "address": "서울 마포구", "phone": null, "thumbnailUrl": "https://...",
+    "distanceKm": 1, "isOpenNow": true, "friendDogCount": 2
+  }], "nextCursor": null }
+```
+
+- **`distanceKm`는 정수로 반올림**해서 내려준다. 강아지 추천(3.5절)과 같은 규칙이다.
+  다만 매장은 주소가 공개 정보라 좌표를 숨길 이유가 없다 — `lat`/`lng`는 그대로 준다.
+- **`isOpenNow`는 서버가 판정한다.** 클라이언트가 `businessHours`로 다시 계산하면
+  임시 휴무(`closedDates`)와 매장별 예외를 놓쳐서 "영업 중이라더니 닫혀 있는" 사고가 난다.
+  `businessHours` + `closedDates` + 매장 시간대를 모두 본 결과여야 한다.
+- **`friendDogCount`가 이 화면의 유일한 차별점이다**(요구사항 `C-02`).
+  `friendships` → 상대 견주의 `dogs` → 그 강아지의 `enrollments(status='ACTIVE')` 가
+  이 매장인 것의 수. 0이면 `null`로 보내도 되고 `0`으로 보내도 된다 — 앱은 둘 다 안 그린다.
+- **`thumbnailUrl`은 `imageUrls`의 첫 장**이다. 목록에 배열 전체를 넣지 않는다 —
+  핀 수십 개에 사진 배열이 딸려 오면 응답이 폭발한다.
+
+### 14.3 `GET /places/{placeId}` (MAP-02)
+
+```json
+{
+  "id": "...", "name": "댕댕유치원 성수점", "category": "kindergarten",
+  "lat": 37.5637, "lng": 126.9237,
+  "address": "서울 마포구 양화로 12길 34, 1층",
+  "phone": "02-336-1234",
+  "description": "소형견 전용 공간을 따로 두고 있어요.",
+  "imageUrls": ["https://...", "https://..."],
+  "businessHours": [{ "day": "mon", "open": "09:00", "close": "19:00" }],
+  "closedDates": ["2026-09-15"],
+  "distanceKm": 1, "isOpenNow": true, "friendDogCount": 2
+}
+```
+
+- `businessHours`는 **`merchants.business_hours` JSONB 원소 그대로**다
+  (`BusinessHour(day, open, close)`). 앱이 그 모양으로 디코딩한다.
+  `day`는 `mon`~`sun` 소문자. 앱이 오늘 줄을 굵게 그린다.
+- **`closedDates`를 빠뜨리지 말 것.** 영업시간표만으로는 임시 휴무를 알 수 없어
+  헛걸음이 난다. 이 화면이 막으려는 사고가 그것이다.
+- `distanceKm`는 **요청자 위치를 모르면 `null`**로 둔다. 상세는 위치 없이도 열려야 한다.
+
+### 14.4 앱이 지금 쓰지 않는 것 (서버가 만들 필요 없음)
+
+리뷰 평점, 가격표, 예약 가능 여부, 즐겨찾기. 화면에 자리가 없다.
+
+**나중에 요청할 것**: 유치원 상세에 `KindergartenProfile`의 `acceptedSizes` ·
+`requiresNeutered` · `requiredVaccinations` · `dailyCapacity` 를 붙일 예정이다.
+"우리 아이를 받아주는 곳인가"가 유치원 탐색의 실제 질문이라서다(`MAP-03` 비교 화면의 축).
+**지금 만들지는 말 것** — 화면이 아직 없다.
+
+### 14.5 남은 것
+
+| 티켓 | 내용 | 상태 |
+|---|---|---|
+| `MAP-01` | 위 목록 API | 미착수 — **이게 없으면 지도 모드가 목 데이터로만 돈다** |
+| `MAP-02` | 위 상세 API | 미착수 |
+| `MAP-03` | 유치원 비교 | 화면·API 모두 미착수 |
+| `KG-05` | 상세에서 유치원 연결 | 미착수. 상세 시트에 자리만 있다 |
 
 ## 폐기된 엔드포인트 (v2 → v3)
 
