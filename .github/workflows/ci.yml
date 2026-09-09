@@ -1,0 +1,79 @@
+# PR이 main을 깨뜨리지 않는지 확인한다.
+#
+# 왜 compileJava 가 아니라 build 인가: 이 레포의 테스트 4개 중 3개가 스프링 컨텍스트를
+# 띄운다. 그 중 SchemaDriftTest 는 "마이그레이션으로 컬럼을 추가하고 엔티티 반영을 잊은"
+# 경우를 잡는데, 이건 사람이 리뷰로 잡기 가장 어려운 종류다. 컨텍스트를 띄우려면 DB가
+# 필요하므로 서비스 컨테이너를 쓴다.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 같은 브랜치에 새 커밋이 오면 이전 실행을 취소한다 — 낡은 결과를 기다릴 이유가 없다.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    # ⚠️ 포트를 5433/6380 으로 매핑하는 건 오타가 아니다. 테스트가 @ActiveProfiles("local")
+    #    을 쓰고 application-local.yml 이 이 포트를 하드코딩하고 있다. 로컬 개발 환경과
+    #    같은 포트를 그대로 쓰면 CI 전용 프로파일을 따로 만들 필요가 없다.
+    services:
+      postgres:
+        # PostGIS 확장이 필요하다 (V1__init.sql 의 CREATE EXTENSION postgis).
+        # 순정 postgres 이미지로는 첫 마이그레이션부터 실패한다.
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: kkodong
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d kkodong"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+      redis:
+        image: redis:7
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # 의존성·빌드 캐시. gradle-wrapper.jar 변조 검증도 여기서 같이 해준다.
+      - uses: gradle/actions/setup-gradle@v4
+
+      # 스키마는 Flyway 가 만든다(V1~V5). 빈 DB 에 컨텍스트가 뜨면서 자동 적용된다.
+      - name: 빌드 + 테스트
+        run: ./gradlew build
+
+      # 실패했을 때 로그만 보고 원인을 찾기 어려우므로 HTML 리포트를 남긴다.
+      - name: 테스트 리포트
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: build/reports/tests/test
+          retention-days: 7
