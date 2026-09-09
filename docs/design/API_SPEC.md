@@ -360,6 +360,22 @@ score = 30 × distance_score
 | 친구 상세 | `GET /api/v1/friendships/{friendshipId}` | |
 | 친구 끊기 | `DELETE /api/v1/friendships/{friendshipId}` | 양쪽 모두 가능. 채팅·약속 비활성화 |
 
+**응답 모양** (`GET /friendships`, 화면: 채팅 탭 목록):
+```json
+[{
+  "id": "...",
+  "owner": { "id": "...", "displayName": "몽이집사" },
+  "dogs": [ /* 2.1의 dog와 같은 모양. 다견 가구면 여럿 */ ],
+  "lastMessage": { "content": "내일 어때요?", "createdAt": "2026-09-09T08:00:00Z" },
+  "unreadCount": 2,
+  "walkedTogetherCount": 3
+}]
+```
+- `dogs`가 **배열인 이유**: friendship은 견주 쌍에 유일한데 상대가 다견 가구일 수 있다.
+  앱은 첫 마리 이름으로 방 제목을 짓고 "몽이 외 1"로 줄인다
+- `lastMessage`는 대화가 없으면 `null` — 빈 문자열로 채우면 "메시지가 있는데 내용이 빈" 상태와
+  구분되지 않는다
+
 ---
 
 ## 3. 채팅 & 산책 약속 (CHAT-1, CHAT-2) — Spring WebSocket(STOMP)
@@ -377,6 +393,16 @@ score = 30 × distance_score
   (`user_a_id`/`user_b_id`)인지, **차단 관계가 아닌지**(SAFETY-1) 확인 후 거부/허용.
   RLS가 없으므로 직접 작성해야 한다
 
+**응답 모양** (`GET /friendships/{id}/messages`):
+```json
+{ "items": [{ "id": "...", "senderId": "...", "content": "안녕하세요",
+              "createdAt": "2026-09-09T08:00:00Z", "isMine": false }],
+  "nextCursor": "..." }
+```
+- **`isMine`은 서버가 판정한다.** 클라이언트가 자기 `userId`를 들고 `senderId`와 비교하게 두면
+  토큰 교체·다중 기기에서 말풍선이 반대로 그려진다
+- `items`는 **최신순**이다. 앱이 뒤집어 그린다(아래가 최신)
+
 ### 3.2 산책 약속 (v3 신설)
 
 | 동작 | 메서드/경로 | 상세 |
@@ -393,6 +419,16 @@ score = 30 × distance_score
 노출한다 — "처음 만나는 친구라면 안전한 장소에서, 목줄을 유지한 채 짧게 인사부터
 시작해보세요"(../TICKETS.md Q3). 서버는 첫 약속 여부 판단용으로 해당 friendship의
 과거 `completed` 약속 존재 여부를 응답에 포함한다.
+
+**응답 모양** (`GET /walk-appointments`, `POST /walk-appointments`):
+```json
+{ "id": "...", "friendshipId": "...", "scheduledAt": "2026-09-10T18:00:00Z",
+  "placeName": "경의선숲길 입구", "lat": null, "lng": null,
+  "status": "proposed", "isProposer": false, "isFirstWithFriend": true }
+```
+- `isProposer`가 있어야 앱이 **제안자에게 응답 버튼을 숨긴다**(제안자 본인은 응답 불가, 400)
+- `isFirstWithFriend`가 안전 넛지의 유일한 판단 근거다 — 이게 없으면 매번 띄우거나 아예 못 띄운다
+- `status`는 소문자. 앱은 모르는 값을 `unknown`으로 떨어뜨리고 버튼을 잠근다
 
 ---
 
@@ -446,6 +482,34 @@ score = 30 × distance_score
 > **동네 인기 산책로 추천은 Phase 2다** — 이 절에 API 없음. 밀도가 필요한 기능이고
 > 활성화 임계치·궤적 프라이버시 처리가 미정(../TICKETS.md Q9).
 
+### 5.4 응답 모양
+
+```json
+{ "id": "...", "dogId": "...", "dogName": "초코",
+  "startedAt": "2026-09-09T09:00:00Z", "endedAt": "2026-09-09T09:42:30Z",
+  "distanceMeters": 2480, "poopCount": 1, "peeCount": 3,
+  "route": [{ "lat": 37.55, "lng": 126.92, "ts": "2026-09-09T09:00:05Z" }],
+  "weatherCondition": null, "weatherTempCelsius": null }
+```
+
+- **`endedAt: null`이 "진행 중"이다.** 별도 status를 두지 않는다 —
+  "끝났는데 진행 중" 같은 불가능한 조합이 표현 가능해진다.
+  앱은 진행 중이면 경과 시간을 현재 시각 기준으로 계산한다
+- **목록 응답에는 `route`를 넣지 않는다**(`null`). 궤적은 한 번 산책에 수백 점이라
+  목록마다 내려보내면 응답이 폭발한다. 앱도 상세에서 다시 받는다
+- `poopCount`/`peeCount`는 비정규화 집계다. 배변 API와 **같은 트랜잭션**에서 증감한다
+- 목록은 `{ "items": [...], "nextCursor": "..." }`
+
+**배변 일괄 전송이 선택이 아닌 이유**: 앱은 산책 중 배변을 **로컬 큐에만 쌓고 종료 시 한 번에**
+보낸다. 산책 중 네트워크가 끊기는 건 예외가 아니라 정상이고, 한 건씩 보내면 끊긴 구간이
+그대로 유실된다. `POST .../bathroom-logs`는 **배열 body**를 받아야 하고, 각 원소의
+`clientLogId`(클라이언트 생성 UUID)로 **중복 INSERT를 막아야 한다** —
+재전송으로 카운트가 두 번 오르면 그 산책 기록은 되돌릴 방법이 없다.
+
+**앱은 서버 실패로 산책을 끊지 않는다**: 시작 요청이 실패해도 걷기는 계속되고,
+종료 시점에 세션을 만들어 완료까지 한 번에 보낸다(`startedAt`은 실제 출발 시각).
+그래서 **`POST /walk-sessions`에 과거 `startedAt`이 들어올 수 있다** — 거부하지 말 것.
+
 ---
 
 ## 6. 산책 완료 카드 (CARD-1, CARD-2)
@@ -488,6 +552,28 @@ score = 30 × distance_score
 
 **집계 컬럼**: `like_count`/`comment_count`는 비정규화 — 목록 조회 시 COUNT 서브쿼리를
 돌리지 않는다. 증감은 좋아요/댓글 API와 같은 트랜잭션에서.
+
+**응답 모양** (`GET /community/posts`):
+```json
+{ "items": [{
+    "id": "...", "title": null, "content": "오늘 연남동 산책하다 만난 아이",
+    "imageUrls": ["https://..."],
+    "author": { "id": "...", "displayName": "몽이집사", "profileImageUrl": null,
+                "areaName": "연남동", "isFriend": true },
+    "likeCount": 3, "commentCount": 1, "liked": false,
+    "createdAt": "2026-09-09T08:30:00Z", "isMine": false
+  }], "nextCursor": "..." }
+```
+
+- **`liked`가 없으면 하트를 채울지 말지 알 수 없다.** 앱은 하트를 먼저 칠하고 실패 시 되돌리므로
+  초기값이 반드시 필요하다
+- **`isMine`도 서버가 판정한다** — 삭제 버튼 노출 근거다. 클라이언트가 유저 ID를 비교하지 않는다
+- **`author.isFriend`·`author.areaName`은 정렬 근거를 화면에 보여주기 위한 것**이다.
+  동네·친구 우선 정렬이 이 커뮤니티의 유일한 차별점인데(CONCEPT 3.4),
+  화면에 아무 표시가 없으면 사용자에게는 그냥 최신순으로 보인다
+
+댓글(`GET .../comments`)은 **평면 배열**로 내려준다. `parentCommentId`가 있으면 대댓글이고,
+앱은 **한 단계까지만** 들여쓴다 — 깊이가 늘면 좁은 화면에서 읽을 수 없다.
 
 ---
 
