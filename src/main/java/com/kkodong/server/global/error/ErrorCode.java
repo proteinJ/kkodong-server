@@ -55,6 +55,15 @@ public enum ErrorCode {
     INVALID_REPORT_TARGET_TYPE(HttpStatus.BAD_REQUEST, "R005", "유효하지 않은 신고 대상 유형입니다."),
     UNSUPPORTED_REPORT_TARGET(HttpStatus.BAD_REQUEST, "R006", "아직 지원하지 않는 신고 대상입니다."),
 
+    // Kindergarten (견주 유치원 KG — 견주가 '다니는' 유치원을 읽는 경로)
+    // ⚠️ 이 블록을 파일 끝이 아니라 여기에 넣은 이유: 점주 앱(#71~#74)이 enum 끝에
+    //    자기 코드를 이어 붙이고 있어, 양쪽 다 끝에 추가하면 머지 충돌이 확정된다.
+    //    중간에 끼워 넣으면 hunk가 겹치지 않아 자동 병합된다.
+    // ⚠️ 이름에 MY_ 를 붙인 이유: 점주 쪽에 이미 ENROLLMENT_NOT_FOUND 가 있어
+    //    같은 이름을 쓰면 머지 시 enum 상수가 중복돼 컴파일이 깨진다.
+    //    점주 것은 "매장 입장에서 원생이 없다", 이것은 "내 유치원이 아니다"로 의미도 다르다.
+    MY_ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "KG001", "유치원 등록 정보를 찾을 수 없습니다."),
+
     // Friend (친구 관련)
     // ⚠️ 산책 시간대는 추천의 선행조건이 아니다 — 미입력은 중립(0.5)으로 처리되며 불이익이 없다
     //    (FRIEND_RECOMMENDATION_SPEC.md 2절 / API_SPEC.md 2.1 규약 6). 반면 자택 위치는
