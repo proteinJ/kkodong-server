@@ -895,6 +895,114 @@ FRIEND/CHAT보다 먼저 만든 이유가 이것이므로, 빠뜨리면 순서�
 사진 뷰어·기기 저장 `FR-C11-02`), 활동 앨범(`C-12`), 이용권 상세(`C-13` 요약분).
 서버만 붙으면 동작한다.
 
+## 14. 지도 — 강아지 동반 매장 탐색 (MAP-01/02) 🟠 서버 미구현
+
+> **iOS는 이 계약대로 이미 구현돼 있다**(`Features/Places/`). 산책 탭 안에서 토글로
+> 지도 모드가 열리고, 검색바·업종 필터·핀·매장 카드·상세 시트가 전부 동작한다.
+> 서버가 아래 두 엔드포인트만 그대로 만들면 붙는다. **필드명이 어긋나면 화면이 통째로 빈다.**
+>
+> 데이터 출처는 **기존 `merchants` 테이블**이다. 새 테이블이 필요 없다 —
+> 점주 앱(`PN-01~05`)이 채워 넣는 그 행을 견주에게 읽기 전용으로 여는 것이다.
+
+| 동작 | 메서드/경로 | 화면 |
+|---|---|---|
+| 주변 매장 목록 | `GET /api/v1/places?lat=&lng=&radiusKm=&categories=&keyword=` | 지도 핀 + 카드 |
+| 매장 상세 | `GET /api/v1/places/{placeId}` | 상세 시트 (`MAP-02`) |
+
+둘 다 **인증 필요**하다 — `friendDogCount`(친구 재원 정보)가 요청자가 누구인지 알아야 계산된다.
+
+### 14.1 노출 규칙 — 이걸 어기면 사고가 난다
+
+- **`status = 'ACTIVE'` 인 매장만 내보낸다.** `PENDING`은 사업자 진위확인 전이라
+  견주 앱에 뜨면 안 되고(`MerchantStatus` 주석), `SUSPENDED`·`CLOSED`도 제외한다.
+  단 **행을 지우지는 않는다** — 과거 예약·이용권 이력이 매달려 있다.
+- **업종은 `MerchantType` 그대로**: `kindergarten` / `grooming` / `clinic`.
+  ⚠️ **`cafe`는 없다.** 넣으려면 `merchants.merchant_type` CHECK 마이그레이션 +
+  전용 프로필 테이블이 필요하다(`MerchantType` 주석의 "의도된 마찰"). 제품 결정이 먼저다.
+  iOS에는 `cafe` 자리만 있고 **필터 칩에는 넣지 않았다** — 항상 0건인 필터가 되기 때문이다.
+- enum은 **소문자**로 내보낸다(`EnumFormat.lower()`). 앱은 모르는 값을 `unknown`으로
+  떨어뜨려 회색 핀으로 그리므로 값이 늘어도 화면은 안 깨지지만, 그 핀은 "기타"가 된다.
+
+### 14.2 `GET /places` (MAP-01)
+
+**쿼리 파라미터**
+
+| 이름 | 필수 | 값 | 뜻 |
+|---|---|---|---|
+| `lat` `lng` | ✅ | `37.5605` | 내 현재 위치. 앱이 1회성 위치 조회로 넣는다 |
+| `radiusKm` | | 기본 `3` | 반경 |
+| `categories` | | `kindergarten,grooming` | 쉼표 구분. **비어 있으면 전 업종** |
+| `keyword` | | `미용` | 상호 부분 일치 |
+| `cursor` | | | 페이징 |
+
+- **`categories`와 `keyword`는 값이 없으면 앱이 아예 안 보낸다.** 서버도 빈 문자열을
+  "아무것도 아닌 것 검색"으로 읽으면 안 된다 — 결과가 0이 되어 지도가 통째로 빈다.
+- 반경 조회는 PostGIS `ST_DWithin(location, :point, :meters)`. `merchants.location`이
+  이미 `Point`라 인덱스만 있으면 된다.
+
+**응답**
+
+```json
+{ "items": [{
+    "id": "...", "name": "댕댕유치원 성수점", "category": "kindergarten",
+    "lat": 37.5637, "lng": 126.9237,
+    "address": "서울 마포구", "phone": null, "thumbnailUrl": "https://...",
+    "distanceKm": 1, "isOpenNow": true, "friendDogCount": 2
+  }], "nextCursor": null }
+```
+
+- **`distanceKm`는 정수로 반올림**해서 내려준다. 강아지 추천(3.5절)과 같은 규칙이다.
+  다만 매장은 주소가 공개 정보라 좌표를 숨길 이유가 없다 — `lat`/`lng`는 그대로 준다.
+- **`isOpenNow`는 서버가 판정한다.** 클라이언트가 `businessHours`로 다시 계산하면
+  임시 휴무(`closedDates`)와 매장별 예외를 놓쳐서 "영업 중이라더니 닫혀 있는" 사고가 난다.
+  `businessHours` + `closedDates` + 매장 시간대를 모두 본 결과여야 한다.
+- **`friendDogCount`가 이 화면의 유일한 차별점이다**(요구사항 `C-02`).
+  `friendships` → 상대 견주의 `dogs` → 그 강아지의 `enrollments(status='ACTIVE')` 가
+  이 매장인 것의 수. 0이면 `null`로 보내도 되고 `0`으로 보내도 된다 — 앱은 둘 다 안 그린다.
+- **`thumbnailUrl`은 `imageUrls`의 첫 장**이다. 목록에 배열 전체를 넣지 않는다 —
+  핀 수십 개에 사진 배열이 딸려 오면 응답이 폭발한다.
+
+### 14.3 `GET /places/{placeId}` (MAP-02)
+
+```json
+{
+  "id": "...", "name": "댕댕유치원 성수점", "category": "kindergarten",
+  "lat": 37.5637, "lng": 126.9237,
+  "address": "서울 마포구 양화로 12길 34, 1층",
+  "phone": "02-336-1234",
+  "description": "소형견 전용 공간을 따로 두고 있어요.",
+  "imageUrls": ["https://...", "https://..."],
+  "businessHours": [{ "day": "mon", "open": "09:00", "close": "19:00" }],
+  "closedDates": ["2026-09-15"],
+  "distanceKm": 1, "isOpenNow": true, "friendDogCount": 2
+}
+```
+
+- `businessHours`는 **`merchants.business_hours` JSONB 원소 그대로**다
+  (`BusinessHour(day, open, close)`). 앱이 그 모양으로 디코딩한다.
+  `day`는 `mon`~`sun` 소문자. 앱이 오늘 줄을 굵게 그린다.
+- **`closedDates`를 빠뜨리지 말 것.** 영업시간표만으로는 임시 휴무를 알 수 없어
+  헛걸음이 난다. 이 화면이 막으려는 사고가 그것이다.
+- `distanceKm`는 **요청자 위치를 모르면 `null`**로 둔다. 상세는 위치 없이도 열려야 한다.
+
+### 14.4 앱이 지금 쓰지 않는 것 (서버가 만들 필요 없음)
+
+리뷰 평점, 가격표, 예약 가능 여부, 즐겨찾기. 화면에 자리가 없다.
+
+**나중에 요청할 것**: 유치원 상세에 `KindergartenProfile`의 `acceptedSizes` ·
+`requiresNeutered` · `requiredVaccinations` · `dailyCapacity` 를 붙일 예정이다.
+"우리 아이를 받아주는 곳인가"가 유치원 탐색의 실제 질문이라서다(`MAP-03` 비교 화면의 축).
+**지금 만들지는 말 것** — 화면이 아직 없다.
+
+### 14.5 남은 것
+
+| 티켓 | 내용 | 상태 |
+|---|---|---|
+| `MAP-01` | 위 목록 API | 미착수 — **이게 없으면 지도 모드가 목 데이터로만 돈다** |
+| `MAP-02` | 위 상세 API | 미착수 |
+| `MAP-03` | 유치원 비교 | 화면·API 모두 미착수 |
+| `KG-05` | 상세에서 유치원 연결 | 미착수. 상세 시트에 자리만 있다 |
+
 ## 폐기된 엔드포인트 (v2 → v3)
 
 클라이언트 코드나 문서에 남아 있으면 제거할 것.
