@@ -8,6 +8,7 @@ import com.kkodong.server.domain.kindergarten.repository.MyKindergartenQueryRepo
 import com.kkodong.server.domain.kindergarten.repository.MyKindergartenQueryRepository.PassRow;
 import com.kkodong.server.global.error.BusinessException;
 import com.kkodong.server.global.error.ErrorCode;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -58,7 +59,15 @@ public class MyKindergartenService {
      */
     private final Clock clock;
 
-    /** 운영용. Spring이 이 생성자를 쓴다. */
+    /**
+     * 운영용.
+     *
+     * <p><b>{@code @Autowired} 를 빼면 안 된다.</b> 생성자가 하나면 Spring 이 그것을 쓰지만,
+     * 둘 이상이면 어느 것을 쓸지 알려주지 않는 한 <b>기본 생성자</b>를 찾다가
+     * {@code NoSuchMethodException} 으로 기동이 깨진다. 아래 테스트용 생성자가 있으므로
+     * 이 표시가 필요하다.
+     */
+    @Autowired
     public MyKindergartenService(MyKindergartenQueryRepository queryRepository) {
         this(queryRepository, Clock.system(MERCHANT_ZONE));
     }
