@@ -657,6 +657,158 @@ FRIEND/CHAT보다 먼저 만든 이유가 이것이므로, 빠뜨리면 순서�
 
 ---
 
+## 13. 견주 유치원 — 알림장 (KG-09/10/11) 🟠 서버 미구현
+
+> **읽는 쪽만 있다.** 알림장을 쓰는 것은 점주 앱(`PN-14`, `/api/v1/partner/...`)이고,
+> 견주는 발송된 것을 읽기만 한다. 점주 엔드포인트를 견주 토큰으로 부르면 403이므로
+> 두 경로를 섞지 않는다.
+>
+> **진입 경로는 마이 탭이다**(`UD-A` 부분 결정, 2026-09-09).
+> 유치원을 *찾는* 화면(`C-01`~`C-04`)은 지도, *다니는* 화면(`C-09`~`C-15`)은 마이 하위다.
+> 재원 중인 사람만 쓰는 화면이라 탭으로 빼면 대부분의 사용자에게 평생 빈 탭이 하나 는다.
+>
+> **iOS는 이 계약대로 이미 구현돼 있다**(`Features/Kindergarten/`). 서버가 붙으면
+> 그대로 동작하고, 필드명이 어긋나면 화면이 통째로 빈다. 바꿔야 하면 이슈에서 먼저 합의할 것.
+
+| 동작 | 메서드/경로 | 화면 |
+|---|---|---|
+| 내 유치원 목록 | `GET /api/v1/kindergartens/my` | 마이 탭 섹션 |
+| 유치원 홈 | `GET /api/v1/kindergartens/enrollments/{enrollmentId}` | `C-09` |
+| 알림장 목록 | `GET /api/v1/kindergartens/enrollments/{enrollmentId}/daily-notes?cursor=&limit=20` | `C-10` |
+| 알림장 상세 | `GET /api/v1/kindergartens/daily-notes/{noteId}` | `C-11` |
+| 활동 앨범 | `GET /api/v1/kindergartens/enrollments/{enrollmentId}/photos?cursor=` | `C-12` |
+| 읽음 처리 | `POST /api/v1/kindergartens/daily-notes/{noteId}/read` | `C-11` |
+
+### 13.1 공통 규칙
+
+- **`DRAFT`는 절대 내보내지 않는다.** 견주 응답은 `status = SENT`만 담는다.
+  쓰다 만 알림장이 새면 그 자체로 CS다("우리 아이만 내용이 없어요").
+- **권한은 `enrollment.dogId → dog.ownerId == 로그인 유저`로 판정한다.**
+  `enrollmentId`는 점주 화면에도 노출되는 값이라 아는 것만으로는 권한이 되지 않는다.
+- **enum은 소문자로 내보낸다** — `EnumFormat.lower()`. `status`, `todayAttendance.status` 모두.
+  iOS는 모르는 값을 `unknown`으로 떨어뜨리므로 값이 늘어도 화면이 깨지진 않지만, 그 항목은 "-"로 나온다.
+- **날짜는 `LocalDate` 문자열**(`"2026-09-09"`), 시각은 `"09:12"`처럼 **매장 시간대로 잘라서** 보낸다.
+  iOS 디코더가 기본 전략이라 ISO 문자열을 `Date`로 못 읽는다 — 전부 문자열로 받는다.
+
+### 13.2 `GET /kindergartens/my`
+
+퇴원(`withdrawn`)한 곳은 서버가 뺀다. 다견 가구는 **강아지 수만큼** 행이 나온다 —
+알림장이 아이별로 오기 때문이다.
+
+```json
+[{
+  "enrollmentId": "...", "merchantId": "...", "merchantName": "댕댕유치원 성수점",
+  "dogId": "...", "dogName": "초코", "dogImageUrl": "https://...",
+  "status": "active",
+  "unreadNoteCount": 2
+}]
+```
+
+`unreadNoteCount`는 `status = SENT AND read_at IS NULL`의 개수다. 마이 탭 배지가 이 값 하나로 그려진다.
+
+### 13.3 `GET /kindergartens/enrollments/{enrollmentId}` (C-09)
+
+```json
+{
+  "enrollmentId": "...", "merchantName": "댕댕유치원 성수점", "dogName": "초코",
+  "status": "active",
+  "todayAttendance": { "status": "attended", "checkedInAt": "09:12", "checkedOutAt": null },
+  "passes": [{
+    "id": "...", "productName": "10회권",
+    "remainingCount": 2, "totalCount": 10,
+    "expiresOn": "2026-09-15", "daysUntilExpiry": 6
+  }],
+  "recentNotes": [{
+    "id": "...", "noteDate": "2026-09-09", "preview": "친구들이랑 공놀이 신나게 했어요",
+    "thumbnailUrl": "https://...", "photoCount": 3, "readAt": null
+  }]
+}
+```
+
+- **`todayAttendance`가 `null`이면 "오늘은 등원하지 않는 날"이다.** `SCHEDULED`("등원 전")와 다르다.
+  둘을 합치면 안 가는 날이 결석처럼 읽힌다.
+- **하원은 상태가 아니다.** `checkedOutAt`이 채워진 것으로 판단한다(점주 쪽 `AttendanceStatus`와 동일).
+- `passes`는 **기간권이면 `remainingCount`·`totalCount`가 `null`**이다. iOS는 이걸 "기간권"으로 그린다.
+- `daysUntilExpiry`는 무기한이면 `null`, 이미 지났으면 음수. 회차 2 이하 또는 7일 이내면 강조된다.
+- `recentNotes`는 **3건**(FR-C09-03).
+
+### 13.4 `GET .../daily-notes` (C-10)
+
+```json
+{ "items": [ /* recentNotes와 같은 모양 */ ], "nextCursor": "..." }
+```
+
+날짜 역순, 커서 페이징. `preview`는 서버가 `activity`(비면 다음 항목)를 잘라서 준다 —
+클라이언트가 자르면 아이템마다 길이가 달라진다.
+
+**검색·필터 파라미터**(`FR-C10-01`) — iOS는 이미 이걸 보내고 있다:
+
+| 파라미터 | 값 | 뜻 |
+|---|---|---|
+| `keyword` | 문자열 | 알림장 내용 부분 일치. **빈 값이면 아예 보내지 않는다** — 서버가 `keyword=`를 "빈 문자열 검색"으로 읽으면 결과가 0이 된다 |
+| `from` | `2026-08-10` | 이 날짜 이후만. 앱은 1주/1개월/3개월 칩을 이 값으로 바꿔 보낸다 |
+| `unreadOnly` | `true` | 안 읽은 것만. 매일 쌓이는 목록이라 제일 자주 쓰는 필터다 |
+
+세 조건은 **AND**로 묶는다. 조건에 안 걸린 경우와 애초에 알림장이 없는 경우를 앱이
+다른 문구로 안내하므로, 빈 결과에 에러를 내지 말고 `items: []`를 그대로 줄 것.
+
+### 13.5 `GET /kindergartens/daily-notes/{noteId}` (C-11)
+
+```json
+{
+  "id": "...", "enrollmentId": "...", "dogName": "초코", "merchantName": "댕댕유치원 성수점",
+  "noteDate": "2026-09-09",
+  "content": {
+    "activity": "공놀이", "meal": "사료 한 그릇 완식",
+    "bathroom": null, "condition": "아주 좋음", "remark": null
+  },
+  "photos": [{ "id": "...", "url": "https://...", "thumbnailUrl": "https://...",
+               "noteDate": null, "noteId": null }],
+  "sentAt": "2026-09-09T09:40:00Z", "readAt": null
+}
+```
+
+- `content`는 점주 쪽 `NoteContent` **그대로**다(다섯 항목, 순서 포함). 새 항목을 여기서 늘리지 말 것 —
+  늘리려면 점주 작성 화면부터 늘어야 한다.
+- **선생님이 안 쓴 칸은 `null`로 보낸다.** 빈 문자열이나 `"없음"`으로 채우지 않는다 —
+  iOS는 빈 항목을 아예 그리지 않는데, `"없음"`이 오면 "배변: 없음"이 화면에 박힌다.
+
+### 13.6 `GET .../photos` (C-12 활동 앨범)
+
+알림장에 붙은 사진만 **최신순**으로 모아 준다. 발송된(`SENT`) 알림장의 사진만이다.
+
+```json
+{ "items": [{ "id": "...", "url": "https://...", "thumbnailUrl": "https://...",
+              "noteDate": "2026-09-09", "noteId": "..." }],
+  "nextCursor": "..." }
+```
+
+- **앨범에서는 `noteDate`가 필수다.** 앱이 날짜로 묶어 헤더를 붙인다 —
+  사진만 늘어놓으면 언제 찍힌 건지 알 수 없다.
+  (알림장 상세 안의 `photos`에서는 `null`이어도 된다)
+- `noteId`는 사진에서 원본 알림장으로 건너가는 통로다.
+- **같은 날 사진은 연속으로 내려줄 것.** 앱은 페이지 경계에서 같은 날이면 이어 붙이는데,
+  날짜가 섞여 오면 "9월 9일" 헤더가 화면에 두 번 나온다.
+
+### 13.7 `POST .../read`
+
+`read_at`을 처음 한 번만 채운다(이미 있으면 그대로 둔다 — 점주가 보는 "읽은 시각"이 뒤로 밀리면 안 된다).
+응답 본문은 없다. iOS는 실패해도 삼킨다 — 사용자가 할 수 있는 일이 없고, 다음에 열면 다시 시도된다.
+
+### 13.8 아직 계약에 없는 것
+
+| 화면 | 기능 | 상태 |
+|---|---|---|
+| `C-05` | 코드/QR로 유치원 연결 | 미착수. **이게 없으면 위 API가 전부 빈 목록이다** |
+| `C-11` | 커뮤니티 내보내기(`FR-C11-03`) | 미착수 |
+| `C-13` | 이용권 차감 이력 | 점주 쪽 `pass_ledger`는 있다. 견주용 엔드포인트만 없다 |
+| `C-14` | 통합 타임라인 | 미착수 |
+| `C-15` | 알림 센터 | 미착수 |
+
+**iOS는 이미 끝났다**: 알림장 목록(검색·기간·안읽음 필터, 월 그룹), 상세(앞뒤 이동,
+사진 뷰어·기기 저장 `FR-C11-02`), 활동 앨범(`C-12`), 이용권 상세(`C-13` 요약분).
+서버만 붙으면 동작한다.
+
 ## 폐기된 엔드포인트 (v2 → v3)
 
 클라이언트 코드나 문서에 남아 있으면 제거할 것.
