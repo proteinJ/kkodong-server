@@ -103,7 +103,10 @@ public enum ErrorCode {
     // 화면이 낡은 것이므로, 차감 없이 등원시키지 않고 여기서 막는다.
     NO_USABLE_PASS(HttpStatus.BAD_REQUEST, "PA001", "사용 가능한 이용권이 없습니다. 이용권을 먼저 발급하거나 연장해 주세요."),
     PASS_NOT_FOUND(HttpStatus.NOT_FOUND, "PA002", "존재하지 않는 이용권입니다."),
-    PASS_NOT_USABLE(HttpStatus.BAD_REQUEST, "PA003", "만료되었거나 잔여 회차가 없는 이용권입니다.");
+    PASS_NOT_USABLE(HttpStatus.BAD_REQUEST, "PA003", "만료되었거나 잔여 회차가 없는 이용권입니다."),
+    PASS_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "PA004", "이미 환불되었거나 종료된 이용권입니다."),
+    // 회차를 남기고 환불하면 그 회차로 등원이 되어 매출과 장부가 어긋난다.
+    INVALID_PASS_ADJUSTMENT(HttpStatus.BAD_REQUEST, "PA005", "조정 후 잔여 회차가 0보다 작을 수 없습니다.");
 
 
     private final HttpStatus httpStatus;

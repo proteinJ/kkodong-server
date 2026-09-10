@@ -57,6 +57,60 @@ public class PassLedger {
     @Column(name = "created_at", insertable = false, updatable = false)
     private OffsetDateTime createdAt;
 
+    /** 발급 한 줄. 이용권의 첫 행이며, 원장을 처음부터 더하면 현재 잔여가 나와야 한다. */
+    public static PassLedger grant(UUID passId, Integer totalCount, UUID actorUserId, String reason) {
+        return PassLedger.builder()
+                .passId(passId)
+                .entryType(PassEntryType.GRANT)
+                .delta(totalCount == null ? 0 : totalCount) // 기간권은 회차가 없다
+                .balanceAfter(totalCount)
+                .actorUserId(actorUserId)
+                .reason(reason == null ? "이용권 발급" : reason)
+                .build();
+    }
+
+    /** 기간 연장 한 줄. 회차와 무관하므로 delta는 0이다. */
+    public static PassLedger extension(UUID passId, Integer balanceAfter,
+                                       UUID actorUserId, String reason) {
+        return PassLedger.builder()
+                .passId(passId)
+                .entryType(PassEntryType.EXTEND)
+                .delta(0)
+                .balanceAfter(balanceAfter)
+                .actorUserId(actorUserId)
+                .reason(reason == null ? "기간 연장" : reason)
+                .build();
+    }
+
+    /**
+     * 환불 한 줄. 남아 있던 회차를 전부 걷어낸 것으로 기록한다 —
+     * 원장을 처음부터 더했을 때 잔여 0이 나와야 장부가 맞는다.
+     */
+    public static PassLedger refund(UUID passId, Integer removedCount,
+                                    UUID actorUserId, String reason) {
+        return PassLedger.builder()
+                .passId(passId)
+                .entryType(PassEntryType.REFUND)
+                .delta(removedCount == null ? 0 : -removedCount)
+                .balanceAfter(removedCount == null ? null : 0)
+                .actorUserId(actorUserId)
+                .reason(reason == null ? "환불" : reason)
+                .build();
+    }
+
+    /** 수동 조정 한 줄. ⚠️ 사유가 필수다 — 근거 없는 회차 변동은 분쟁 때 방어할 수 없다. */
+    public static PassLedger adjustment(UUID passId, int delta, Integer balanceAfter,
+                                        UUID actorUserId, String reason) {
+        return PassLedger.builder()
+                .passId(passId)
+                .entryType(PassEntryType.ADJUST)
+                .delta(delta)
+                .balanceAfter(balanceAfter)
+                .actorUserId(actorUserId)
+                .reason(reason)
+                .build();
+    }
+
     /** 등원 차감 한 줄. delta는 항상 -1이다. */
     public static PassLedger deduction(UUID passId, Integer balanceAfter,
                                        UUID actorUserId, UUID attendanceId) {
