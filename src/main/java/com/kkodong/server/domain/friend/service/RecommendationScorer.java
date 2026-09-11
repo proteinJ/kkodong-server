@@ -3,15 +3,18 @@ package com.kkodong.server.domain.friend.service;
 import com.kkodong.server.domain.dog.domain.DogSize;
 import com.kkodong.server.domain.friend.domain.*;
 import com.kkodong.server.global.config.DogProperties;
+import com.kkodong.server.global.config.RecommendationProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 
 import static java.lang.Math.abs;
+import static java.lang.Math.round;
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.toList;
 
 /**
  * 6개 신호 점수 → 합산 · 동점 셔플
@@ -21,6 +24,7 @@ import static java.lang.Math.abs;
 public class RecommendationScorer {
 
     private final DogProperties dogProperties;
+    private final RecommendationProperties recommendationProperties;
 
     private MatchFacts facts(Subject me, Candidate c) {
         Subject other = c.subject();
@@ -82,12 +86,86 @@ public class RecommendationScorer {
 
 
     public List<Scored> rankAll(Subject me, List<Candidate> candidates, long shuffleSeed) {
-        // 1. 거리 (30점)
-        // 2. 시간대 (15점)
-        // 3. 성격 (20점)
-        // 4. 나이 (15점)
-        // 5. 체급 (12점)
-        // 6. 견종 (8점)
-        return null;
+        // 가중합
+        List<Scored> scored = candidates.stream()
+                .map(c -> score(me, c))
+                .toList();
+
+        // 반올림 - score 소수점 첫째 자리에서 반올림 -> 정수
+        Map<Long, List<Scored>> groups = scored.stream()
+                .collect(groupingBy(s -> round(s.total()), () -> new TreeMap<Long, List<Scored>>(Comparator.reverseOrder()), toList()));
+
+        // 셔플 - 같은 정수 점수 그룹안에서 셔플(정렬)
+        Random random = new Random(shuffleSeed);
+        List<Scored> ranked = new ArrayList<>();
+
+        for (List<Scored> group : groups.values()) {
+            List<Scored> shuffled = new ArrayList<>(group);
+            Collections.shuffle(shuffled, random);
+            ranked.addAll(shuffled); // ranked에 추가
+        }
+        return ranked;
     }
+
+    private Scored score(Subject me, Candidate c) {
+        MatchFacts f = facts(me, c);
+        Subject other = c.subject();
+
+        // 1. 거리 (30점)
+        double distance_s = distanceScore(f.distanceMeters());
+        // 2. 시간대 (15점)
+        double timeSlot_s = slotScore(f.sharedTimeSlots(), me.walkTimeSlots(), other.walkTimeSlots());
+        // 3. 성격 (20점)
+        double personality_s = slotScore(f.sharedTraits(), me.personalityTraits(), other.personalityTraits());
+        // 4. 나이 (15점)
+        double age_s = ageScore(f.ageDiffMonths());
+        // 5. 체급 (12점)
+        double size_s = sizeScore(f.sizeStepDiff());
+        // 6. 견종 (8점)
+        double breed_s = breedScore(f.breed());
+
+        RecommendationProperties.Weights w = recommendationProperties.weights();
+        double total = w.distance() * distance_s
+                + w.timeSlot() * timeSlot_s
+                + w.personality() * personality_s
+                + w.age() * age_s
+                + w.size() * size_s
+                + w.breed() * breed_s;
+
+        return new Scored(other, total, f);
+    }
+
+    private double breedScore(BreedRelation relation) {
+        return switch (relation) {
+            case SAME -> 1.0;
+            case SAME_GROUP -> 0.6;
+            case DIFFERENT -> 0.2;
+            case UNPAIRABLE -> 0.3;
+        };
+    }
+
+    private double sizeScore(Integer sizeStepDiff) {
+        if (sizeStepDiff == null) { return recommendationProperties.neutralScore(); }
+        return switch (sizeStepDiff) {
+            case 0 -> 1.0;
+            case 1 -> 0.5;
+            default -> 0.0;
+        };
+    }
+
+    private double ageScore(Integer ageDiffMonths) {
+        if (ageDiffMonths == null) { return recommendationProperties.neutralScore(); }
+        return Math.max(0, 1 - ((double) ageDiffMonths/ recommendationProperties.ageToleranceMonths()));
+    }
+
+    private double slotScore(List<String> sharedList, List<String> myList, List<String> otherList) {
+        if (sharedList == null) { return recommendationProperties.neutralScore(); }
+        return (double) sharedList.size() / Math.min(myList.size(), otherList.size());
+    }
+
+    private double distanceScore(double meters) {
+        double km = meters / 1000.0;
+        return Math.max(0, 1 - km / recommendationProperties.maxRadiusKm());
+    }
+
 }
