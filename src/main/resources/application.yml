@@ -148,5 +148,22 @@ kkodong:
       "[video/mp4]":       mp4
       "[video/quicktime]": mov
 
+  # ============================================================
+  # 국세청 사업자등록번호 진위확인 (PN-02, FR-PN02-01)
+  #
+  # 공공데이터포털(data.go.kr) "국세청_사업자등록정보 진위확인 및 상태조회" — 무료.
+  # 번호·대표자명·개업일 세 값을 함께 대조한다. 번호만 맞으면 남의 사업자번호로
+  # 매장을 열 수 있기 때문이다.
+  #
+  # ⚠️ 꺼져 있으면 매장이 검증되지 않은 PENDING으로 남는다 — 통과시킨 척하지 않는다.
+  #    견주 앱(KG-01)은 ACTIVE만 노출하므로 미검증 매장이 새어 나가지 않는다.
+  # ⚠️ 운영에서는 반드시 enabled: true 로 둘 것.
+  # ============================================================
+  business-verification:
+    enabled: ${NTS_VERIFICATION_ENABLED:false}
+    service-key: ${NTS_SERVICE_KEY:}
+    base-url: https://api.odcloud.kr/api/nts-businessman/v1
+    timeout-millis: 5000        # 국세청 API가 느릴 때 가입 요청이 통째로 묶이지 않게
+
 server:
   port: ${SERVER_PORT:8080}
