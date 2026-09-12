@@ -124,7 +124,9 @@ public enum ErrorCode {
     // 승인은 원생을 만드는 행위라, 이미 재원 중인 강아지를 또 승인하면 원생이 둘로 갈린다.
     ALREADY_ENROLLED(HttpStatus.CONFLICT, "AP003", "이미 재원 중인 반려견입니다."),
     APPLICATION_FORM_NOT_FOUND(HttpStatus.NOT_FOUND, "AP004", "활성화된 신청서 양식이 없습니다."),
-    CONSENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "AP005", "활성화된 서약서가 없습니다.");
+    CONSENT_DOCUMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "AP005", "활성화된 서약서가 없습니다."),
+    // 퇴원한 원생을 다시 휴원시키는 등, 현재 상태에서 불가능한 전이를 요청한 경우.
+    INVALID_ENROLLMENT_STATUS(HttpStatus.BAD_REQUEST, "EN003", "현재 원생 상태에서 할 수 없는 작업입니다.");
 
 
     private final HttpStatus httpStatus;
