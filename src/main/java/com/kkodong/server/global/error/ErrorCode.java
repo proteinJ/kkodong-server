@@ -144,7 +144,14 @@ public enum ErrorCode {
     MEDIA_RESOLUTION_TOO_HIGH(HttpStatus.BAD_REQUEST, "MD003", "허용된 해상도를 초과했습니다. 앱에서 크기를 줄여 다시 올려 주세요."),
     MEDIA_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "MD004", "미디어 업로드에 실패했습니다."),
     MEDIA_NOT_FOUND(HttpStatus.NOT_FOUND, "MD005", "존재하지 않는 미디어입니다."),
-    TOO_MANY_MEDIA_FILES(HttpStatus.BAD_REQUEST, "MD006", "한 번에 올릴 수 있는 파일 수를 초과했습니다.");
+    TOO_MANY_MEDIA_FILES(HttpStatus.BAD_REQUEST, "MD006", "한 번에 올릴 수 있는 파일 수를 초과했습니다."),
+
+    // Assignment (담당 배정 AS)
+    ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "AS001", "존재하지 않는 담당 배정입니다."),
+
+    // Review (리뷰 RW) — 리뷰 작성은 견주 앱 몫이고, 점주 앱은 확인과 답글만 맡는다.
+    REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "RW001", "존재하지 않는 리뷰입니다."),
+    REVIEW_DELETED(HttpStatus.BAD_REQUEST, "RW002", "삭제된 리뷰에는 답글을 달 수 없습니다.");
 
 
     private final HttpStatus httpStatus;
