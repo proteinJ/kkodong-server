@@ -123,5 +123,30 @@ kkodong:
       neutered: 0                 # 초기 미사용
     candidate-cap: 300
 
+  # ============================================================
+  # 유치원 미디어 업로드 정책 (PN-15, FR-PN15-02)
+  #
+  # ⚠️ 전부 잠정치다 — UD-C(보관 기간·해상도·건당 용량 상한)가 아직 미결이다.
+  #    PC-23: 유치원 1곳이 하루 100장을 올리면 스토리지가 빠르게 부푼다. 이것이
+  #    CONCEPT.md 4절 "고정비 0" 원칙과 충돌하는 유일한 기능이라, 실사용 데이터를
+  #    보고 조정해야 한다. 실제 증가 속도는 merchant_media의 size_bytes/width/height로 잰다.
+  #
+  # ⚠️ 서버는 리사이즈하지 않고 상한을 넘으면 거부한다. 이 코드베이스는 이미
+  #    누끼 생성을 온디바이스로 처리해 "서버 이미지 처리 비용 0"을 원칙으로 세웠다
+  #    (FR-OB04-01). 리사이즈도 같은 이유로 클라이언트 몫이다.
+  # ============================================================
+  media:
+    max-image-bytes: 10485760     # 10MB — spring.servlet.multipart.max-file-size와 맞춰둔 값
+    max-video-bytes: 10485760     # 10MB. ⚠️ 영상을 실제로 받으려면 multipart 상한도 함께 올려야 한다
+    max-image-pixels: 24000000    # 2400만 화소(대략 6000x4000). 최신 폰 원본을 받되 그 이상은 거부
+    max-per-upload: 20            # 한 번에 올릴 수 있는 파일 수
+    image-types:
+      "[image/jpeg]": jpg
+      "[image/png]":  png
+      "[image/webp]": webp
+    video-types:
+      "[video/mp4]":       mp4
+      "[video/quicktime]": mov
+
 server:
   port: ${SERVER_PORT:8080}
