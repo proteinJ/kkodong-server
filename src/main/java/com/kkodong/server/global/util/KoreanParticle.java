@@ -20,8 +20,16 @@ public final class KoreanParticle {
     private static final char SYLLABLE_LAST = '힣';    // U+D7A3
     private static final int JONGSUNG_COUNT = 28;      // 종성 자리 수(없음 포함)
 
-    /** {@code 푸들 → 푸들이에요}, {@code 말티즈 → 말티즈예요} */
+    /**
+     * {@code 푸들 → 푸들이에요}, {@code 말티즈 → 말티즈예요}
+     *
+     * <p>붙일 말이 없으면(null·공백) 그대로 돌려준다. {@code "null예요"} 같은 문장이
+     * 사용자에게 나가는 것보다 낫다.
+     */
     public static String iyeyo(String word) {
+        if (word == null || word.isBlank()) {
+            return word;
+        }
         return word + (hasFinalConsonant(word) ? "이에요" : "예요");
     }
 

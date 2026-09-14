@@ -17,7 +17,6 @@ import com.kkodong.server.global.config.RecommendationProperties;
 import com.kkodong.server.global.error.BusinessException;
 import com.kkodong.server.global.error.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,7 +32,6 @@ import static java.util.stream.Collectors.toMap;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-@Slf4j
 public class RecommendationService {
 
     private final RecommendationProperties recommendationProperties;
@@ -91,9 +89,6 @@ public class RecommendationService {
         // ③ RANK — 2단계
         long seed = Objects.hash(userId, LocalDate.now());
         List<Scored> ranked = recommendationScorer.rankAll(me, pool.candidates(), seed);
-
-        ranked.forEach(s -> log.info("{} {} -> {}",
-                pool.dogs.get(s.subject().dogId()).getName(), s.total(), s.facts()));
 
         // ④ PAGE — 4단계: offset 부터 limit 까지
 //        List<Scored> pageItems = ranked.stream().skip(offset).limit(limit).toList();
