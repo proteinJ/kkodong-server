@@ -115,4 +115,10 @@ class PropertiesBindingTest {
         //    후보를 거리순으로 limit개만 뽑는 셈이 되어 거리가 하드 필터가 된다(API_SPEC 2.1 규약 1).
         assertThat(recommendationProperties.candidateCap()).isGreaterThan(100);
     }
+
+    @Test
+    @DisplayName("친구 추천 기능의 Reason(이유) 생성을 하는 임계치 값을 검증한다.")
+    void reasonBind() {
+        assertThat(recommendationProperties.reason().ageCloseMonths()).isEqualTo(18);
+    }
 }

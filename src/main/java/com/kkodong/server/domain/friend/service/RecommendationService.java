@@ -42,6 +42,7 @@ public class RecommendationService {
     private final BlockRepository blockRepository;
     private final FriendshipRepository friendshipRepository;
     private final RecommendationScorer recommendationScorer;
+    private final RecommendationReasonBuilder recommendationReasonBuilder;
 
     public RecommendationResponse.page recommend(UUID userId, UUID dogId, int limit, String cursor) {
         int maxRadiusKm = recommendationProperties.maxRadiusKm();
@@ -103,7 +104,7 @@ public class RecommendationService {
                         DogResponse.publicInfo.from(pool.dogs().get(s.subject().dogId())), // dog
                         UserResponse.summary.from(pool.owners().get(s.subject().ownerId())), // owner
                         (int) Math.round(s.facts().distanceMeters() / 1000.0),
-                        null, // reason
+                        recommendationReasonBuilder.build(s.facts(), s.subject()), // reason
                         "none" // requestStatus
                 ))
                 .toList();
