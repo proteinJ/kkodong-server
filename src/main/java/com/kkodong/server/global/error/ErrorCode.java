@@ -60,7 +60,8 @@ public enum ErrorCode {
     //    (FRIEND_RECOMMENDATION_SPEC.md 2절 / API_SPEC.md 2.1 규약 6). 반면 자택 위치는
     //    거리 계산의 기준점이라 없으면 추천 자체가 성립하지 않는다(같은 문서 규약 8).
     NOT_FOUND_HOME_LOCATION(HttpStatus.BAD_REQUEST, "F001", "자택 위치를 먼저 등록해야 친구 추천을 받을 수 있습니다."),
-    DOG_NOT_OWNED(HttpStatus.FORBIDDEN, "F002", "본인의 반려견이 아닙니다.");
+    DOG_NOT_OWNED(HttpStatus.FORBIDDEN, "F002", "본인의 반려견이 아닙니다."),
+    INVALID_CURSOR(HttpStatus.BAD_REQUEST, "F003", "올바르지 않은 페이지 커서입니다.");
 
 
     private final HttpStatus httpStatus;

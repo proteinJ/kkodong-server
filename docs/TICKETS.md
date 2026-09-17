@@ -168,18 +168,24 @@ FRIEND/WALK/COMMUNITY 계열 신설).
 
 ### FRIEND-1. 주변 강아지 추천 피드
 
-**진행 상황 (2026-09-07)**
+**진행 상황 (2026-09-18)**
 
 | | |
 |---|---|
 | ✅ | 선행 검증 — `home_location` 미설정(F001) · 타인 강아지 조회(F002) |
 | ✅ | 제외 집합 — 차단 양방향(SAFETY-1) + 이미 친구인 견주(견주 단위 판정) |
 | ✅ | PostGIS 후보 조회 (`ST_DWithin` + GiST) · 응답 조립 · 커밋 `c80826b` |
-| ⬜ | `RecommendationScorer` — 6개 신호 점수·합산·동점 셔플. **핵심이자 미착수** |
-| ⬜ | `RecommendationReasonBuilder` — 이유 문장 |
-| ⬜ | `RecommendationCursor` — 반경/오프셋 인코딩. 지금은 반경이 상한 5km 고정이고 `1→2→3→5km` 자동 확장이 없다 |
-| ⬜ | 견종 그룹 테이블 — `breed_score`의 입력인데 설정에 아직 없다 |
-| ⬜ | `DogResponse.publicInfo`에 `id`·`ageMonths` 추가 — 없으면 클라이언트가 신청 대상 id를 못 받는다 |
+| ✅ | `RecommendationScorer` — 6개 신호 점수·합산·동점 셔플 · 커밋 `76749f8` |
+| ✅ | `RecommendationReasonBuilder` — 이유 문장 · 커밋 `73baec3` |
+| ✅ | 견종 그룹 테이블 — `config/breed-groups.yml` |
+| ✅ | `DogResponse.publicInfo`에 `id`·`ageMonths` 추가 |
+| ✅ | `RecommendationCursor` — 반경/오프셋 인코딩(F003 `INVALID_CURSOR`) · `1→2→3→5km` 자동 확장 · 첫 페이지 반경 확정 · offset 페이징 |
+| ✅ | 페이지 간 순서 고정 — `findCandidates`가 `ORDER BY distanceMeters, d.id`. 거리가 같은 후보(다견 견주)의 DB 순서가 흔들리면 같은 시드로도 셔플 결과가 달라져 페이지 사이 중복·누락이 생긴다 |
+| ⬜ | `requestStatus` — 지금은 `"none"` 고정. FRIEND-2의 `friend_requests` 조회에 의존 |
+| ⬜ | pending 신청이 있는 상대 처리 — 제외할지 `requestStatus`로 노출할지. FRIEND-2와 함께 |
+
+⚠️ **셔플 시드가 날짜라 자정을 넘겨 페이지를 넘기면 순서가 바뀐다.** Phase 1에서는
+감수한다. 문제가 되면 cursor에 날짜를 함께 인코딩한다.
 
 ⚠️ **후보 풀 상한(`candidate-cap`)은 요청 `limit`과 별개 설정값이다.** 같은 값으로
 두면 가까운 순 `limit`개만 뽑아 재정렬하는 꼴이라 거리가 하드 필터로 작동해 아래

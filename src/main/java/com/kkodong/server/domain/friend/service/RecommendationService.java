@@ -4,6 +4,7 @@ import com.kkodong.server.domain.dog.domain.Dog;
 import com.kkodong.server.domain.dog.dto.DogResponse;
 import com.kkodong.server.domain.dog.repository.DogRepository;
 import com.kkodong.server.domain.friend.domain.Candidate;
+import com.kkodong.server.domain.friend.domain.CursorState;
 import com.kkodong.server.domain.friend.domain.Scored;
 import com.kkodong.server.domain.friend.domain.Subject;
 import com.kkodong.server.domain.friend.dto.RecommendationResponse;
@@ -42,9 +43,10 @@ public class RecommendationService {
     private final RecommendationScorer recommendationScorer;
     private final RecommendationReasonBuilder recommendationReasonBuilder;
 
+    /*
+    decode → 반경 확인 → 제외 목록 → recall(첫 페이지만 반경 확장) → 후보 없으면 반환 → hydrate → rank → 페이지 자르기와 encode → 응답
+     */
     public RecommendationResponse.page recommend(UUID userId, UUID dogId, int limit, String cursor) {
-        int maxRadiusKm = recommendationProperties.maxRadiusKm();
-
         User user = userRepository.findById(userId)
                         .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -60,7 +62,10 @@ public class RecommendationService {
         }
 
         // 커서 해석
-//        RecommendationCursor.decode(radius, offset);
+        CursorState state = RecommendationCursor.decode(cursor);
+        if (state != null && !recommendationProperties.radiusStepsKm().contains(state.radiusKm())) {
+            throw new BusinessException(ErrorCode.INVALID_CURSOR);
+        }
 
         double lat = user.getHomeLocation().getY();
         double lng = user.getHomeLocation().getX();
@@ -68,33 +73,36 @@ public class RecommendationService {
         // [ 제외 대상 User Id 수집 ]
         // 1. 차단한 사용자
         Collection<UUID> excludedUserIdCollection = new ArrayList<>(blockRepository.findRelatedUserIds(userId));
-        // 2. 본인 id 넣어서 문법에러 막음
+        // 2. 추천에서 본인을 빼는 용도 + 제외 목록이 비어서 NOT IN()이 SQL 오류 내는것 막음
         excludedUserIdCollection.add(userId);
         // 3. 이미 친구인 견주
         excludedUserIdCollection.addAll(friendshipRepository.findFriendUserIds(userId));
 
-        //  ① RECALL — 반경 확장은 4단계에서 이 호출을 루프로 감싼다
-        List<RecommendationCandidate> rows =  dogRepository.findCandidates(
-                userId,
-                lat, lng,
-                maxRadiusKm * 1000,
-                excludedUserIdCollection,
-                recommendationProperties.candidateCap()
-        );
+        //  ① RECALL — 반경 확장
+        List<Integer> radiusSteps = (state == null)
+                ? recommendationProperties.radiusStepsKm() : List.of(state.radiusKm());
+        Recall recall = recall(userId, lat, lng, excludedUserIdCollection, radiusSteps, limit);
+        if (recall.rows().isEmpty()) { // 후보가 없으면 바로 반환
+            return RecommendationResponse.page.of(recall.radiusKm());
+        }
 
-        // ② HYDRATE — 1단계
-        Pool pool = hydrate(rows);
+        // ② HYDRATE
+        Pool pool = hydrate(recall.rows());
         Subject me = Subject.of(dog, user);
 
-        // ③ RANK — 2단계
+        // ③ RANK
         long seed = Objects.hash(userId, LocalDate.now());
         List<Scored> ranked = recommendationScorer.rankAll(me, pool.candidates(), seed);
 
-        // ④ PAGE — 4단계: offset 부터 limit 까지
-//        List<Scored> pageItems = ranked.stream().skip(offset).limit(limit).toList();
+        // ④ PAGE: offset 부터 limit 까지
+        int offset = (state == null) ? 0 : state.offset();
+        List<Scored> pageItems = ranked.stream().skip(offset).limit(limit).toList();
 
-        // ⑤ PRESENT — 3단계
-        List<RecommendationResponse.item> items = ranked.stream()
+        String nextCursor = (offset + limit < ranked.size())
+                ? RecommendationCursor.encode(new CursorState(recall.radiusKm(), offset + limit)) : null;
+
+        // ⑤ PRESENT
+        List<RecommendationResponse.item> items = pageItems.stream()
                 .map(s -> new RecommendationResponse.item(
                         DogResponse.publicInfo.from(pool.dogs().get(s.subject().dogId())), // dog
                         UserResponse.summary.from(pool.owners().get(s.subject().ownerId())), // owner
@@ -104,7 +112,7 @@ public class RecommendationService {
                 ))
                 .toList();
 
-        return RecommendationResponse.page.of(items, null, maxRadiusKm);
+        return RecommendationResponse.page.of(items, nextCursor, recall.radiusKm());
     }
 
     private Pool hydrate(List<RecommendationCandidate> rows) {
@@ -121,5 +129,25 @@ public class RecommendationService {
     }
 
     private record Pool(List<Candidate> candidates, Map<UUID, Dog> dogs, Map<UUID, User> owners) {}
+    private record Recall(List<RecommendationCandidate> rows, int radiusKm) {}
 
+    private Recall recall(UUID userId, double lat, double lng, Collection<UUID> excludedUserIds, List<Integer> radiusSteps, int limit) {
+        List<RecommendationCandidate> rows = List.of();
+        int appliedRadiusKm = radiusSteps.get(radiusSteps.size() - 1);
+
+        for (int radiusKm : radiusSteps) {
+            rows = dogRepository.findCandidates(
+                    userId,
+                    lat, lng,
+                    radiusKm * 1000,
+                    excludedUserIds,
+                    recommendationProperties.candidateCap()
+            );
+
+            appliedRadiusKm = radiusKm;
+
+            if (rows.size() >= limit) break;
+        }
+        return new Recall(rows, appliedRadiusKm);
+    }
 }
