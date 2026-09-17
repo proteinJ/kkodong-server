@@ -170,7 +170,7 @@ FRIEND/WALK/COMMUNITY 계열 신설).
 
 ### FRIEND-1. 주변 강아지 추천 피드
 
-**진행 상황 (2026-09-18)**
+**진행 상황 (2026-09-18) — 서버 완료.** 남은 두 항목은 FRIEND-2 범위라 그쪽으로 넘겼다.
 
 | | |
 |---|---|
@@ -183,8 +183,8 @@ FRIEND/WALK/COMMUNITY 계열 신설).
 | ✅ | `DogResponse.publicInfo`에 `id`·`ageMonths` 추가 |
 | ✅ | `RecommendationCursor` — 반경/오프셋 인코딩(F003 `INVALID_CURSOR`) · `1→2→3→5km` 자동 확장 · 첫 페이지 반경 확정 · offset 페이징 |
 | ✅ | 페이지 간 순서 고정 — `findCandidates`가 `ORDER BY distanceMeters, d.id`. 거리가 같은 후보(다견 견주)의 DB 순서가 흔들리면 같은 시드로도 셔플 결과가 달라져 페이지 사이 중복·누락이 생긴다 |
-| ⬜ | `requestStatus` — 지금은 `"none"` 고정. FRIEND-2의 `friend_requests` 조회에 의존 |
-| ⬜ | pending 신청이 있는 상대 처리 — 제외할지 `requestStatus`로 노출할지. FRIEND-2와 함께 |
+| ➡️ | `requestStatus` — 지금은 `"none"` 고정. `friend_requests` 조회가 필요해 **FRIEND-2(#12)로 이관** |
+| ➡️ | pending 신청이 있는 상대 처리 — 제외할지 `requestStatus`로 노출할지. **FRIEND-2(#12)로 이관** |
 
 ⚠️ **셔플 시드가 날짜라 자정을 넘겨 페이지를 넘기면 순서가 바뀐다.** Phase 1에서는
 감수한다. 문제가 되면 cursor에 날짜를 함께 인코딩한다.
