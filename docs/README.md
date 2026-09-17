@@ -19,11 +19,11 @@
 
 ```
 docs/
-├── TICKETS.md          티켓별 진행 현황 · 착수 순서 · 미결정 사항(O1~O7)
+├── TICKETS.md          티켓별 진행 현황 · 착수 순서 · 미결정 사항(O1~O9)
 ├── product/
 │   ├── CONCEPT.md      제품 기획서 (v3, 현행 기준)
 │   ├── MARKET.md       시장조사 · 경쟁 분석 (+ 부록: 똑독 기능 분해)
-│   └── DECISIONS.md    결론이 난 항목과 그 근거 (D1~D6)
+│   └── DECISIONS.md    결론이 난 항목과 그 근거 (D1~D8)
 ├── design/
 │   ├── API_SPEC.md     엔드포인트별 계약 · 서버 구현 규약
 │   ├── openapi.yaml    같은 내용의 기계 판독용
