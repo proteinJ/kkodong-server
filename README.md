@@ -40,9 +40,15 @@ flowchart LR
     API --> R2[(Cloudflare R2<br/>이미지)]
 ```
 
-레이어는 도메인별 패키지로 나눕니다 — `domain/{dog,friend,safety,user}/`에 각각
+레이어는 도메인별 패키지로 나눕니다 — `domain/<이름>/`에 각각
 `controller · service · repository · domain · dto`를 두고, 공통 인프라는 `global/`
-(`security · config · error · storage · util`)에 둡니다.
+(`security · config · error · storage · external · util`)에 둡니다.
+
+견주 앱용 도메인은 `dog · friend · safety · user`,
+점주 앱(꼬동 파트너)용은 `merchant · enrollment · reservation · note · media ·
+assignment · review`입니다. 두 앱은 별도 앱이지만 **계정(`users`)과 서버는 공유**하며,
+점주 API는 전부 `/api/v1/partner/**` 아래에 있습니다 — 경로를 갈라 두면
+"점주 API는 매장 소속·권한을 반드시 검증한다"는 규칙을 경로 단위로 걸 수 있습니다.
 
 ## 데이터 모델
 
@@ -193,12 +199,10 @@ Swagger UI: `/swagger-ui/index.html` (JWT Authorize로 인증 API도 바로 테�
 # 1. 로컬 인프라 (PostGIS + Redis)
 docker compose up -d
 
-# 2. 환경변수
-export DB_URL=jdbc:postgresql://localhost:5433/kkodong
-export DB_USERNAME=postgres DB_PASSWORD=postgres
-export JWT_SECRET=<충분히 긴 랜덤 문자열>
+# 2. (환경변수 불필요) — application-local.yml이 로컬 DB·Redis·포트를 모두 담고 있습니다.
+#    원격 DB로 붙일 때만 .env를 쓰고, 그때는 local 프로파일을 쓰지 않습니다.
 
-# 3. 실행 — 기동 시 Flyway가 V1~V5를 순서대로 적용
+# 3. 실행 — 기동 시 Flyway가 V1~V9를 순서대로 적용
 ./gradlew bootRun --args='--spring.profiles.active=local'
 ```
 
@@ -224,6 +228,12 @@ docker exec -i kkodong-postgres psql -U postgres -d kkodong < seed/dev_seed.sql
 | 차단 · 신고 | ✅ |
 | **친구 추천** | 🟡 후보 조회까지. 점수 계산·이유 문장·커서 미착수 |
 | 친구 신청/수락, 채팅, 산책 기록, 커뮤니티 | ⬜ |
+| **꼬동 파트너(점주 앱) 서버** | 🟢 PN-16·PN-17을 제외하고 서버 구현 |
 
-티켓 단위의 상세 현황과 착수 순서는
-[`TICKETS.md`](docs/TICKETS.md)에 있습니다.
+> ⚠️ 점주 앱은 로드맵상 Phase 3이며 별도 지시로 선행 구현했습니다. 핵심 루프
+> (친구 → 채팅 → 산책 → 카드)는 여전히 미완이고 그쪽이 이 제품의 존재 이유입니다.
+> 남은 PN-16·PN-17은 APNs 인프라가 없어 대기 중입니다.
+
+티켓별 진행 상태는 [`STATUS.md`](docs/STATUS.md)에 있습니다 — GitHub 이슈에서
+자동 생성되므로 그쪽이 정본입니다. 티켓의 정의와 착수 순서는
+[`TICKETS.md`](docs/TICKETS.md)를 보세요.
