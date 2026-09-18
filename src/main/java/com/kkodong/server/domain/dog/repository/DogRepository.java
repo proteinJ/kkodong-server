@@ -26,7 +26,7 @@ public interface DogRepository extends JpaRepository<Dog, UUID> {
                    AND u.home_location IS NOT NULL
                    AND ST_DWithin(u.home_location, ST_SetSRID(ST_MakePoint(:lng, :lat), 4326)::geography, :radiusMeters)
                    AND u.id NOT IN (:excludedUserIds)
-               ORDER BY distanceMeters
+               ORDER BY distanceMeters, d.id
                LIMIT :candidateCap
     """, nativeQuery = true)
     List<RecommendationCandidate> findCandidates(

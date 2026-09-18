@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+// ../../resources/config/breed-groups.yml + personality-tags
 @ConfigurationProperties(prefix = "kkodong.dog")
 @Validated
 public record DogProperties(@Valid @NotNull Personality personality,

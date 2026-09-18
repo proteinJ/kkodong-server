@@ -1,0 +1,38 @@
+# 성향 태그 — personality_score(추천 가중치 20점)의 입력이자, 강아지 등록 시 선택지의 원본.
+#
+# 왜 별도 파일인가: 값 목록이 길어 application.yml에 두면 인프라 설정이 묻힌다.
+#   application.yml의 spring.config.import 로 읽으므로 바인딩 경로는 여기 적힌 그대로
+#   kkodong.dog.personality.tags 다 — @ConfigurationProperties 입장에서는 한 파일에 있는 것과 같다.
+#
+# ⚠️ 왜 enum이 아닌가: 태그 세트는 실사용 데이터로 바뀐다(의미가 겹치는 태그 병합 등).
+#    enum이면 바꿀 때마다 재빌드·재배포가 필요하지만 설정값이면 파일 수정 + 재시작으로 끝난다.
+#
+# ⚠️ 소유권: 태그는 '입력 검증'(dog)과 '점수 계산'(recommendation) 양쪽에서 쓰인다.
+#    recommendation 아래 두면 강아지 등록이 추천 설정을 읽게 되어 의존 방향이 뒤집힌다.
+#    그래서 소유 도메인(dog) 아래 두고 recommendation이 참조한다.
+#
+# ⚠️ 개수 제한(최대 3개)은 여기 없다 — DTO의 @Size와 DB CHECK 제약이 담당한다.
+#    DB 제약을 바꾸려면 어차피 마이그레이션이 필요해 진짜로 동적일 수 없다.
+#    동적이어야 하는 것은 '값 목록'이지 '개수'가 아니다.
+#
+# ⚠️ 대괄호 표기("[활발함]")는 오타가 아니다. Spring의 ConfigurationPropertyName은
+#    소문자·숫자·'-'만 허용해서, 한글 맵 키는 대괄호로 감싸지 않으면 뭉개진다.
+#    조용히 null이 되는 종류라 PropertiesBindingTest가 이를 회귀 검증한다.
+kkodong:
+  dog:
+    personality:
+      # 키가 곧 DB에 저장·전송되는 값이다(예: ["활발함","사교적"]). 여기 오타는 데이터를 오염시킨다.
+      #
+      # 두 형태를 두는 이유(문자열 조작 금지 — docs/design/RECOMMENDATION.md 5절):
+      #   stem      : 나열할 때        → "활발·사교적인 성격이…"의 앞쪽
+      #   adnominal : 명사를 꾸밀 때   → "둘 다 활발한 성격이에요"
+      # "장난꾸러기 → 장난기 많은" 처럼 어미만 떼서는 만들 수 없는 형태가 있어 둘 다 적어둔다.
+      tags:
+        "[활발함]":     { stem: 활발,     adnominal: 활발한 }
+        "[차분함]":     { stem: 차분,     adnominal: 차분한 }
+        "[사교적]":     { stem: 사교적,   adnominal: 사교적인 }
+        "[낯가림]":     { stem: 낯가림,   adnominal: 낯가리는 }
+        "[겁많음]":     { stem: 겁많음,   adnominal: 겁많은 }
+        "[장난꾸러기]": { stem: 장난기,   adnominal: 장난기 많은 }
+        "[독립적]":     { stem: 독립적,   adnominal: 독립적인 }
+        "[애교많음]":   { stem: 애교,     adnominal: 애교많은 }
